@@ -1,0 +1,5 @@
+﻿# Credenciales privadas de Claude
+.claude/settings.local.json
+
+# Datos originales del proyecto
+data/
