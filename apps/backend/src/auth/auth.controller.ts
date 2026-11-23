@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Res } from '@nestjs/common';
-import { IsEmail, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { SESSION_COOKIE, SESSION_TTL_SECONDS } from './auth.constants';
 import { AuthService } from './auth.service';
@@ -14,6 +14,17 @@ export class LoginDto {
   @IsString()
   @MaxLength(200)
   password!: string;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  @MaxLength(200)
+  currentPassword!: string;
+
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @MaxLength(200)
+  newPassword!: string;
 }
 
 const cookieOptions = () => ({
@@ -41,6 +52,12 @@ export class AuthController {
   @HttpCode(204)
   logout(@Res({ passthrough: true }) res: Response): void {
     res.clearCookie(SESSION_COOKIE, cookieOptions());
+  }
+
+  @Post('change-password')
+  @HttpCode(204)
+  async changePassword(@Body() body: ChangePasswordDto, @CurrentUser() user: AuthUser): Promise<void> {
+    await this.auth.changePassword(user.id, body.currentPassword, body.newPassword);
   }
 
   @Get('me')

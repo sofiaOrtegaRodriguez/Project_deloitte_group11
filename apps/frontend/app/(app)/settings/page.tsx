@@ -1,4 +1,6 @@
 import { PagePlaceholder } from '@/components/page-placeholder';
+import { ChangePasswordSection } from '@/components/change-password-section';
+import { TeamMembersSection } from '@/components/team-members-section';
 import { UsersSection } from '@/components/users-section';
 
 export default function SettingsPage() {
@@ -9,6 +11,8 @@ export default function SettingsPage() {
         description="Configuration, Threshold Overrides, Simulation and logs."
       />
       <UsersSection />
+      <TeamMembersSection />
+      <ChangePasswordSection />
     </div>
   );
 }

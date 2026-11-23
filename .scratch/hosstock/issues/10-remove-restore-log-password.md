@@ -4,12 +4,12 @@
 
 **Blocked by:** 09 (Access Requests)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Remove sets Account Status to Removed; the User's next request fails at once (the guard checks status on every request)
-- [ ] Correct password + Removed → "Your account has been removed"
-- [ ] A Removed email stays blocked for registration; Restore returns the account to Active
-- [ ] The Director cannot remove themselves
-- [ ] User Management Log records date, action (approve, reject, remove, restore), affected User and a nullable actor field; visible in Settings to the Director
-- [ ] Password change requires the current password
-- [ ] API tests: immediate invalidation, self-removal blocked, log entries, password change
+- [x] Remove sets Account Status to Removed; the User's next request fails at once (the guard checks status on every request)
+- [x] Correct password + Removed → "Your account has been removed"
+- [x] A Removed email stays blocked for registration; Restore returns the account to Active
+- [x] The Director cannot remove themselves
+- [x] User Management Log records date, action (approve, reject, remove, restore), affected User and a nullable actor field; visible in Settings to the Director
+- [x] Password change requires the current password
+- [x] API tests: immediate invalidation, self-removal blocked, log entries, password change
