@@ -3,6 +3,7 @@ import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ExampleSecretsCheck } from './config/example-secrets';
+import { ExportsModule } from './exports/exports.module';
 import { FiltersModule } from './filters/filters.module';
 import { HealthController } from './health/health.controller';
 import { ItemsModule } from './items/items.module';
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module';
     SettingsModule,
     PlanningModule,
     RecommendationsModule,
+    ExportsModule,
   ],
   controllers: [HealthController],
   // ExampleSecretsCheck runs on module init, before DirectorSeed (application bootstrap).

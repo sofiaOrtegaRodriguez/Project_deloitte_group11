@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
+import { ExportButtons } from '@/components/export-buttons';
 import { FilterBar } from '@/components/filter-bar';
 import { InventoryTable } from '@/components/inventory-table';
 import { useFilters } from '@/lib/filters';
@@ -27,6 +28,7 @@ function Inventory() {
         </p>
       </div>
       <FilterBar />
+      <ExportButtons csv excel />
       {isPending && <p className="text-muted-foreground">Loading…</p>}
       {error && <p role="alert" className="text-destructive">{error.message}</p>}
       {data && <InventoryTable items={data.items} filters={filters} />}
