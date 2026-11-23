@@ -3,6 +3,7 @@
 import { alertsStep } from '../alerts/alerts.step';
 import { computeFromDatabase } from '../indicators/load-indicators';
 import { autoDraftsStep } from '../recommendations/auto-drafts-step';
+import { replenishmentStep } from '../reminders/replenishment.step';
 import { staleDraftsStep } from '../recommendations/stale-drafts';
 import type { RecalculationStep } from './recalculation';
 
@@ -17,6 +18,7 @@ export const indicatorsStep: RecalculationStep = {
 export const recalculationSteps: readonly RecalculationStep[] = [
   indicatorsStep,
   alertsStep,
+  replenishmentStep, // after alertsStep: reopens the Alert whose Replenishment is overdue
   autoDraftsStep,
   staleDraftsStep, // must stay LAST: compares Drafts with what the earlier steps settled
   // Later tickets: Alert synchronisation, auto-Draft synchronisation, Stale Draft detection.

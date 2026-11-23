@@ -5,6 +5,8 @@ import { CLOCK, type Clock } from '../clock/clock';
 import { computeFromDatabase } from '../indicators/load-indicators';
 import { notifyUser } from '../notifications/notifications';
 import { PrismaService } from '../prisma/prisma.service';
+import { approvalData, replenishmentStatuses } from '../reminders/replenishment';
+import type { ReplenishmentStatus } from '../reminders/replenishment-rule';
 import { createRecommendation, EMPTY_HISTORY, loadHistory } from './create-recommendation';
 import { diffFigures, type FigureChange } from './stale-drafts';
 import { updateToCurrent } from './update-to-current';
@@ -56,6 +58,10 @@ export interface RecommendationView {
   approvedAt: string | null;
   /** Frozen at Submit: the Item's indicators and the Draft's figures at that moment. Null before Submit. */
   indicatorSnapshot: unknown;
+  /** Replenishment in Progress (ticket 17): only set on the Item's latest Approved Replenish Recommendation. */
+  inProgress: boolean;
+  expectedDeliveryDate: string | null;
+  overdue: boolean;
   createdAt: string;
   updatedAt: string;
   history: {
@@ -74,7 +80,7 @@ function person(user: { id: number; name: string; status: string } | null): Pers
   return { id: user.id, name: removed ? `${user.name} (removed)` : user.name, removed };
 }
 
-function toView(row: RecommendationRow): RecommendationView {
+function toView(row: RecommendationRow, replenishment?: ReplenishmentStatus): RecommendationView {
   return {
     id: row.id,
     type: row.type,
@@ -101,6 +107,9 @@ function toView(row: RecommendationRow): RecommendationView {
     decisionComment: row.decisionComment,
     approvedAt: row.approvedAt?.toISOString() ?? null,
     indicatorSnapshot: row.indicatorSnapshot,
+    inProgress: replenishment?.inProgress ?? false,
+    expectedDeliveryDate: replenishment?.expectedDeliveryDate ?? null,
+    overdue: replenishment?.overdue ?? false,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     history: row.events.map((e) => ({
@@ -135,7 +144,7 @@ export class RecommendationsService {
       include: INCLUDE,
       orderBy: { id: 'desc' },
     });
-    return rows.map(toView);
+    return this.toViews(rows);
   }
 
   /** The Pending Approval Recommendations with the highest Priority Score, for the Dashboard widget. */
@@ -146,13 +155,18 @@ export class RecommendationsService {
       orderBy: [{ priorityScore: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }],
       take: limit,
     });
-    return rows.map(toView);
+    return this.toViews(rows);
   }
 
   async get(id: number): Promise<RecommendationView> {
     const row = await this.prisma.recommendation.findUnique({ where: { id }, include: INCLUDE });
     if (!row) throw new NotFoundException(`Recommendation ${id} not found`);
-    return toView(row);
+    return (await this.toViews([row]))[0];
+  }
+
+  private async toViews(rows: RecommendationRow[]): Promise<RecommendationView[]> {
+    const statuses = await replenishmentStatuses(this.prisma, rows);
+    return rows.map((row) => toView(row, statuses.get(row.id)));
   }
 
   /** Manual Recommendation for any Item that has data. The quantity and justification default to the suggested ones. */
@@ -302,6 +316,10 @@ export class RecommendationsService {
         decidedAt: now,
         decisionComment: comment,
         approvedAt: status === 'APPROVED' ? now : null,
+        // Approval Reference Date + Replenishment Time used (ticket 17): the start of Replenishment in Progress.
+        ...(status === 'APPROVED' && row.type === 'REPLENISH'
+          ? await approvalData(this.prisma, row.itemId, row.indicatorSnapshot)
+          : {}),
       },
     });
     if (updated.count === 0) throw new ConflictException('Only Recommendations pending approval can be decided');

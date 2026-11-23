@@ -306,6 +306,12 @@ model Recommendation {
   decisionComment   String?               @map("decision_comment")
   /// When it was Approved (ticket 17 computes the expected delivery date from it).
   approvedAt        DateTime?             @map("approved_at")
+  /// Approval Reference Date (ticket 17): the Reference Date in force when it was Approved. Start of the Replenishment in Progress.
+  approvalReferenceDate DateTime?         @map("approval_reference_date") @db.Date
+  /// The Replenishment Time (days) used for the expected delivery date: from the Indicator Snapshot, else the Item's current one.
+  replenishmentTimeDays Decimal?          @map("replenishment_time_days") @db.Decimal
+  /// When the "expected delivery overdue" Reopening happened (once per Recommendation).
+  overdueReopenedAt DateTime?             @map("overdue_reopened_at")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
   events            RecommendationEvent[]

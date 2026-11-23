@@ -177,6 +177,14 @@ export function RecommendationCard({ rec, showItem = true }: { rec: Recommendati
       {mode === 'discard' && <DiscardForm rec={rec} onDone={() => setMode('view')} />}
       {rec.indicatorSnapshot && <SnapshotView rec={rec} />}
       {rec.status === 'APPROVED' && <p className="text-xs">Approved: ready to process outside Hosstock.</p>}
+      {rec.inProgress && rec.expectedDeliveryDate && (
+        <p className="inline-block rounded bg-muted px-1.5 py-0.5 text-xs font-medium" data-testid="replenishment-in-progress">
+          Replenishment in progress — expected {rec.expectedDeliveryDate}
+        </p>
+      )}
+      {rec.overdue && rec.expectedDeliveryDate && (
+        <p className="text-xs text-destructive">Expected delivery {rec.expectedDeliveryDate} is overdue.</p>
+      )}
       {rec.status === 'REJECTED' && rec.decisionComment && <p className="text-xs">Rejection comment: {rec.decisionComment}</p>}
       {actionError && <p role="alert" className="text-sm text-destructive">{actionError.message}</p>}
       {rec.status === 'PENDING_APPROVAL' && user?.role === 'DIRECTOR' && mode === 'view' && (

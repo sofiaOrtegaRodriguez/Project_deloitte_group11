@@ -104,6 +104,10 @@ export interface Recommendation {
   decidedAt: string | null;
   decisionComment: string | null;
   approvedAt: string | null;
+  /** Replenishment in Progress (ticket 17), on the Item's latest Approved Replenish Recommendation. */
+  inProgress: boolean;
+  expectedDeliveryDate: string | null;
+  overdue: boolean;
   indicatorSnapshot: IndicatorSnapshot | null;
   createdAt: string;
   history: HistoryEvent[];

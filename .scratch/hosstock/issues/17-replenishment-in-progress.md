@@ -4,10 +4,10 @@
 
 **Blocked by:** 13 (Reminders), 15 (Submit, Approve and Reject)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Expected delivery date = approval date + Replenishment Time, measured on the Reference Date
-- [ ] No Reminders while the Item has a Replenishment in Progress
-- [ ] Replenishment in Progress ends when the Item returns to Normal or the delivery date passes, whichever comes first
-- [ ] Overdue + still Critical/Attention → Alert Reopens with reason "expected delivery overdue"
-- [ ] API tests using the injectable clock
+- [x] Expected delivery date = approval date + Replenishment Time, measured on the Reference Date
+- [x] No Reminders while the Item has a Replenishment in Progress
+- [x] Replenishment in Progress ends when the Item returns to Normal or the delivery date passes, whichever comes first
+- [x] Overdue + still Critical/Attention → Alert Reopens with reason "expected delivery overdue"
+- [x] API tests using the injectable clock
