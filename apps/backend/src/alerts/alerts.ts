@@ -155,7 +155,7 @@ export async function changeStatus(
 }
 
 /** Reopening: the same Alert returns to New, with the reason recorded (ADR 0004). Used by Reminders and overdue deliveries. */
-export async function reopen(prisma: PrismaClient, alertId: number, reason: string) {
+export async function reopen(prisma: PrismaClient, alertId: number, reason: string, options: { notify?: boolean } = {}) {
   const alert = await requireOpenAlert(prisma, alertId);
   const reopened = await prisma.alert.update({
     where: { id: alertId },
@@ -165,12 +165,15 @@ export async function reopen(prisma: PrismaClient, alertId: number, reason: stri
       events: { create: { type: 'REOPENED', fromStatus: alert.status, toStatus: 'NEW', userId: null, note: reason } },
     },
   });
-  await notifyAllActiveUsers(prisma, {
-    type: 'ALERT_REOPENED',
-    alertId,
-    itemId: alert.itemId,
-    message: alertReopenedMessage(await itemName(prisma, alert.itemId), reason),
-  });
+  // `notify: false` lets a caller that sends its own notification (Reminders) avoid a second one for the same Alert.
+  if (options.notify !== false) {
+    await notifyAllActiveUsers(prisma, {
+      type: 'ALERT_REOPENED',
+      alertId,
+      itemId: alert.itemId,
+      message: alertReopenedMessage(await itemName(prisma, alert.itemId), reason),
+    });
+  }
   return reopened;
 }
 

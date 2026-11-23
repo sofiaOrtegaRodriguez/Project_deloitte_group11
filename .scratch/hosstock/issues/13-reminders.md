@@ -4,11 +4,11 @@
 
 **Blocked by:** 12 (Notifications inbox)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Injectable clock dependency for "now" (Seam C)
-- [ ] Scheduled job on real time every `ALERT_REPEAT_HOURS` (default 12)
-- [ ] Acts on every Alert whose Item is Critical or Attention; Ignored and Resolved Alerts Reopen to New
-- [ ] Each Reminder increments `reminder_count` and generates Notifications
-- [ ] Toast for Reminder Notifications in the frontend
-- [ ] API tests that advance the injectable clock
+- [x] Injectable clock dependency for "now" (Seam C)
+- [x] Scheduled job on real time every `ALERT_REPEAT_HOURS` (default 12)
+- [x] Acts on every Alert whose Item is Critical or Attention; Ignored and Resolved Alerts Reopen to New
+- [x] Each Reminder increments `reminder_count` and generates Notifications
+- [x] Toast for Reminder Notifications in the frontend
+- [x] API tests that advance the injectable clock
