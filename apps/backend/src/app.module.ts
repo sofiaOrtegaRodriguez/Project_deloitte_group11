@@ -6,6 +6,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ExampleSecretsCheck } from './config/example-secrets';
 import { FiltersModule } from './filters/filters.module';
 import { HealthController } from './health/health.controller';
+import { ItemDetailModule } from './item-detail/item-detail.module';
 import { ItemsModule } from './items/items.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PlanningModule } from './planning/planning.module';
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     ClockModule,
     AuthModule,
     ItemsModule,
+    ItemDetailModule,
     AlertsModule,
     DashboardModule,
     FiltersModule,

@@ -4,13 +4,19 @@
 
 **Blocked by:** 06 (Global filters in the URL)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Item detail endpoint and a dynamic Item route under Inventory
-- [ ] Stock history chart with minimum/maximum lines (respecting Threshold Overrides)
-- [ ] Usage history, consumption trend and Estimated Demand
-- [ ] Contracted Lead Time vs Replenishment Time with a mismatch flag
-- [ ] "Data quality" badge on Snapshots with a Data Quality Flag
-- [ ] Drill-through from the Dashboard ranking and the Inventory table preserves the URL filters
-- [ ] Placeholder sections for the Item's Alerts and Recommendations (filled by later tickets)
-- [ ] API tests for the Item detail endpoint
+- [x] Item detail endpoint and a dynamic Item route under Inventory
+- [x] Stock history chart with minimum/maximum lines (respecting Threshold Overrides)
+- [x] Usage history, consumption trend and Estimated Demand
+- [x] Contracted Lead Time vs Replenishment Time with a mismatch flag
+- [x] "Data quality" badge on Snapshots with a Data Quality Flag
+- [x] Drill-through from the Dashboard ranking and the Inventory table preserves the URL filters
+- [x] Placeholder sections for the Item's Alerts and Recommendations (filled by later tickets)
+- [x] API tests for the Item detail endpoint
+
+## Notes
+
+- GET /api/items/:id/detail (src/item-detail/) takes only the period (from, to); indicators come from the whole-portfolio pass.
+- Lead time mismatch: contracted and observed (period mean Replenishment Time) differ by more than 0 days.
+- Placeholders are the real ItemAlerts and RecommendationList components.
