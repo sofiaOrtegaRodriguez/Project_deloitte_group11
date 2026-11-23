@@ -4,10 +4,10 @@
 
 **Blocked by:** 10 (Remove/Restore, User Management Log and password change), 15 (Submit, Approve and Reject), 18 (Configuration and Threshold Overrides)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Re-running the ETL leaves application tables untouched and keeps Item IDs stable
-- [ ] Full recalculation (indicators, Alert sync, auto-Drafts, Stale Draft detection) after the ETL
-- [ ] API test: a re-run preserves Alerts, Recommendations, Threshold Overrides, settings and Users
-- [ ] README documents the synthetic, weakly consistent data, the approximations from ADRs 0001–0003 and the excluded datasets with reasons
-- [ ] Removed authors displayed as "Name (removed)" in Alert comments, Alert history and Recommendation history
+- [x] Re-running the ETL leaves application tables untouched and keeps Item IDs stable
+- [x] Full recalculation (indicators, Alert sync, auto-Drafts, Stale Draft detection) after the ETL
+- [x] API test: a re-run preserves Alerts, Recommendations, Threshold Overrides, settings and Users
+- [x] README documents the synthetic, weakly consistent data, the approximations from ADRs 0001–0003 and the excluded datasets with reasons
+- [x] Removed authors displayed as "Name (removed)" in Alert comments, Alert history and Recommendation history

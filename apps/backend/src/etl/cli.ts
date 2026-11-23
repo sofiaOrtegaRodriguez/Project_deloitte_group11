@@ -11,7 +11,7 @@ async function main(): Promise<void> {
   try {
     console.log(`Loading dataset from ${datasetDir} …`);
     const s = await runEtl(prisma, datasetDir);
-    console.log('ETL finished (indicators recalculated).');
+    console.log('ETL finished (source data replaced; everything derived from it recalculated).');
     console.log(`  Items:      ${s.items} (${s.itemsCreated} new)`);
     console.log(`  Snapshots:  ${s.snapshots} (${s.firstDate} → ${s.lastDate})`);
     console.log(`  Vendors:    ${s.vendors}`);
@@ -21,6 +21,13 @@ async function main(): Promise<void> {
     console.log(`    negative value:           ${s.negativeValue}`);
     console.log(`    non-integer quantity:     ${s.nonIntegerQuantity}`);
     console.log(`    duplicate Snapshot:       ${s.duplicateSnapshot}`);
+    const r = s.recalculation;
+    console.log(`  Recalculation (Reference Date ${r.referenceDate ?? 'none: no data'}):`);
+    console.log(`    Critical Items:           ${r.critical}`);
+    console.log(`    Attention Items:          ${r.attention}`);
+    console.log(`    open Alerts:              ${r.openAlerts}`);
+    console.log(`    open Drafts:              ${r.openDrafts} (${r.staleDrafts} stale)`);
+    console.log('  Users, Alerts, Recommendations, Threshold Overrides and settings were kept as they were.');
   } finally {
     await prisma.$disconnect();
   }
