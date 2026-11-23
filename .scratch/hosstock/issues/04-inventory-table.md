@@ -4,11 +4,11 @@
 
 **Blocked by:** 03 (Indicators module and recalculation)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Inventory page lists all Items with the columns above, fed only by the backend API
-- [ ] Sorting on every column and text search by Item name or ID
-- [ ] Below Minimum Items visually highlighted; Urgency Levels use red/amber/green
-- [ ] Low-Turnover Items identified in the table
-- [ ] Euros formatted to pt-PT
-- [ ] Frontend type-checks
+- [x] Inventory page lists all Items with the columns above, fed only by the backend API
+- [x] Sorting on every column and text search by Item name or ID
+- [x] Below Minimum Items visually highlighted; Urgency Levels use red/amber/green
+- [x] Low-Turnover Items identified in the table
+- [x] Euros formatted to pt-PT
+- [x] Frontend type-checks

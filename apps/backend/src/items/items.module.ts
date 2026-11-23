@@ -25,6 +25,8 @@ export interface ItemRow extends Omit<ItemIndicators, 'itemId'> {
   name: string;
   category: string;
   vendorCode: string;
+  /** Vendor name from the vendors table; falls back to the code when the Vendor is unknown. */
+  vendorName: string;
 }
 
 export interface ItemsResponse {
@@ -61,6 +63,7 @@ export class ItemsService {
     const { referenceDate, config, result } = computed;
     if (!result) return { referenceDate, period: null, config, portfolio: null, items: [] };
     const items = await this.prisma.item.findMany({ orderBy: { id: 'asc' } });
+    const vendorNames = new Map((await this.prisma.vendor.findMany()).map((v) => [v.code, v.name]));
     const byId = new Map(result.items.map((r) => [r.itemId, r]));
 
     return {
@@ -76,6 +79,7 @@ export class ItemsService {
           name: item.name,
           category: item.category,
           vendorCode: item.vendorCode,
+          vendorName: vendorNames.get(item.vendorCode) ?? item.vendorCode,
           ...indicators,
         };
       }),

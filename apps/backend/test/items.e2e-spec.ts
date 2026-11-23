@@ -141,6 +141,16 @@ describe('Items API', () => {
     expect(pump.urgencyLevel).toBe('NORMAL');
   });
 
+  it('returns each Item with its Vendor name from the vendors table', async () => {
+    const { body } = await getItems();
+    const vendors = await prisma.vendor.findMany();
+    const names = new Map(vendors.map((v) => [v.code, v.name]));
+    for (const item of body.items as { vendorCode: string; vendorName: string }[]) {
+      expect(item.vendorName).toBe(names.get(item.vendorCode) ?? item.vendorCode);
+    }
+    expect(body.items.some((i: { vendorName: string; vendorCode: string }) => i.vendorName !== i.vendorCode)).toBe(true);
+  });
+
   it('returns the portfolio aggregates', async () => {
     const { body } = await getItems();
     const p = body.portfolio;
