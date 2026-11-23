@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -131,6 +132,13 @@ export class SettingsService {
       if (!range) throw new BadRequestException('There is no data yet, so a Reference Date cannot be set');
       if (dto.referenceDate !== undefined && (next.referenceDate < range.start || next.referenceDate > range.end)) {
         throw new BadRequestException(`Reference Date must be between ${range.start} and ${range.end}`);
+      }
+    }
+
+    if (dto.referenceDate !== undefined && next.referenceDate !== current.referenceDate) {
+      const simulation = await this.prisma.simulationState.findUnique({ where: { id: 1 } });
+      if (simulation && simulation.status !== 'STOPPED') {
+        throw new ConflictException('The Reference Date cannot be changed while a Simulation is in progress');
       }
     }
 
