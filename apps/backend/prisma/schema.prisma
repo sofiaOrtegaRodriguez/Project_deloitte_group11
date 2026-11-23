@@ -29,7 +29,8 @@ model Item {
   vendorCode        String             @map("vendor_code")
   snapshots         Snapshot[]
   thresholdOverride ThresholdOverride?
-  alerts             Alert[]
+  alerts            Alert[]
+  recommendations   Recommendation[]
 
   @@unique([sourceItemId, name])
   @@map("items")
@@ -132,15 +133,17 @@ enum AccountStatus {
 /// A person who can use Hosstock, as the Director or as a Procurement Team member.
 /// Application table: never touched by the ETL.
 model User {
-  id           Int           @id @default(autoincrement())
-  name         String
+  id                   Int                   @id @default(autoincrement())
+  name                 String
   /// Stored lower-cased. Unique among Users that are not Rejected: a Rejected User frees the email.
-  email        String
-  passwordHash String        @map("password_hash")
-  role         Role
-  status       AccountStatus
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  email                String
+  passwordHash         String                @map("password_hash")
+  role                 Role
+  status               AccountStatus
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  recommendations      Recommendation[]
+  recommendationEvents RecommendationEvent[]
 
   configurationLogs ConfigurationLog[]
 
@@ -234,4 +237,71 @@ model AlertEvent {
 
   @@index([alertId, createdAt])
   @@map("alert_events")
+}
+
+enum RecommendationType {
+  REPLENISH
+  HOLD_PURCHASES
+}
+
+/// Draft -> Pending Approval -> Approved | Rejected, plus Discarded (from Draft). Never deleted.
+enum RecommendationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISCARDED
+}
+
+/// A proposal to buy (Replenish) or to stop buying (Hold Purchases) an Item. Application table.
+model Recommendation {
+  id                Int                   @id @default(autoincrement())
+  type              RecommendationType
+  status            RecommendationStatus  @default(DRAFT)
+  itemId            Int                   @map("item_id")
+  item              Item                  @relation(fields: [itemId], references: [id])
+  /// Units to buy. Always 0 for Hold Purchases.
+  quantity          Decimal               @db.Decimal
+  /// quantity x unit cost. Always 0 for Hold Purchases (see figures.freedCapital).
+  estimatedCost     Decimal               @map("estimated_cost") @db.Decimal
+  priorityScore     Float?                @map("priority_score")
+  justification     String
+  /// The indicator figures the Recommendation was created with (compared with current ones for Stale Drafts).
+  figures           Json
+  /// Frozen copy saved when the Recommendation is submitted.
+  indicatorSnapshot Json?                 @map("indicator_snapshot")
+  /// Null when the system created it (auto-Draft).
+  createdById       Int?                  @map("created_by_id")
+  createdBy         User?                 @relation(fields: [createdById], references: [id])
+  discardReason     String?               @map("discard_reason")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  events            RecommendationEvent[]
+
+  /// At most one open Draft per Item and type.
+  @@unique([itemId, type], map: "recommendations_one_open_draft", where: raw("status = DRAFT"))
+  @@index([itemId])
+  @@index([status])
+  @@map("recommendations")
+}
+
+enum RecommendationEventType {
+  CREATED
+  EDITED
+  DISCARDED
+}
+
+/// History of a Recommendation: who did what and when. A null user means the system.
+model RecommendationEvent {
+  id               Int                     @id @default(autoincrement())
+  recommendationId Int                     @map("recommendation_id")
+  recommendation   Recommendation          @relation(fields: [recommendationId], references: [id])
+  type             RecommendationEventType
+  userId           Int?                    @map("user_id")
+  user             User?                   @relation(fields: [userId], references: [id])
+  details          Json?
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  @@index([recommendationId])
+  @@map("recommendation_events")
 }

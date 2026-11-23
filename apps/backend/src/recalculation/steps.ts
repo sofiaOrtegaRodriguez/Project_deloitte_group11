@@ -2,6 +2,7 @@
 // Order matters: a step may read what earlier steps put in the context.
 import { alertsStep } from '../alerts/alerts.step';
 import { computeFromDatabase } from '../indicators/load-indicators';
+import { autoDraftsStep } from '../recommendations/auto-drafts-step';
 import type { RecalculationStep } from './recalculation';
 
 /** Step 1: Item States -> indicators -> classification, as of the Reference Date. */
@@ -15,5 +16,6 @@ export const indicatorsStep: RecalculationStep = {
 export const recalculationSteps: readonly RecalculationStep[] = [
   indicatorsStep,
   alertsStep,
+  autoDraftsStep,
   // Later tickets: Alert synchronisation, auto-Draft synchronisation, Stale Draft detection.
 ];
