@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PrismaClient } from '../generated/prisma/client';
+import { runRecalculation } from '../recalculation/run-recalculation';
 import {
   INVENTORY_FILE,
   VENDOR_FILE,
@@ -44,6 +45,8 @@ function readSourceFile(datasetDir: string, file: string): string {
  * - Items are upserted by their natural key (Item_ID, Item_Name), so their ids stay stable.
  *   Category and Vendor come from each Item's latest Snapshot.
  * - Application tables are never touched.
+ * - When the load is committed, the full recalculation runs (Item States -> indicators -> classification, plus
+ *   the steps later tickets add).
  */
 export async function runEtl(prisma: PrismaClient, datasetDir: string): Promise<EtlSummary> {
   const snapshots = parseInventoryCsv(readSourceFile(datasetDir, INVENTORY_FILE));
@@ -102,6 +105,10 @@ export async function runEtl(prisma: PrismaClient, datasetDir: string): Promise<
     },
     { timeout: 120_000 },
   );
+
+  // The data is now committed; recalculate everything that is derived from it. If this fails the load is
+  // kept (the CLI reports the error) and can be recalculated by running the ETL again.
+  await runRecalculation(prisma);
 
   const items = await prisma.item.count();
   const dates = snapshots.map((row) => row.date.toISOString().slice(0, 10)).sort();

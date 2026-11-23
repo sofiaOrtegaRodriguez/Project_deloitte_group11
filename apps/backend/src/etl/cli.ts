@@ -11,7 +11,7 @@ async function main(): Promise<void> {
   try {
     console.log(`Loading dataset from ${datasetDir} …`);
     const s = await runEtl(prisma, datasetDir);
-    console.log('ETL finished.');
+    console.log('ETL finished (indicators recalculated).');
     console.log(`  Items:      ${s.items} (${s.itemsCreated} new)`);
     console.log(`  Snapshots:  ${s.snapshots} (${s.firstDate} → ${s.lastDate})`);
     console.log(`  Vendors:    ${s.vendors}`);
@@ -30,7 +30,7 @@ main().catch((error: unknown) => {
   if (error instanceof DatasetValidationError) {
     console.error(`ETL aborted, nothing was changed in the database.\n${error.message}`);
   } else {
-    console.error('ETL failed, nothing was changed in the database.');
+    console.error('ETL failed. If the error mentions the recalculation, the data was loaded: run the ETL again to retry.');
     console.error(error instanceof Error ? error.message : error);
   }
   process.exitCode = 1;

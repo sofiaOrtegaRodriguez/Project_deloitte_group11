@@ -1,0 +1,8 @@
+Date,Item_ID,Item_Type,Item_Name,Current_Stock,Min_Required,Max_Capacity,Unit_Cost,Avg_Usage_Per_Day,Restock_Lead_Time,Vendor_ID
+2025-01-01,101,Consumable,Syringe,100,20,200,10,5,4,V001
+2025-01-06,101,Consumable,Syringe,60,20,200,10,10,8,V001
+2025-01-01,102,Equipment,Ventilator,1000,100,800,20,50,10,V002
+2025-01-10,102,Equipment,Ventilator,1000,100,800,20,50,10,V002
+2025-01-04,103,Equipment,Monitor,30,40,100,5,3,2,V003
+2025-01-01,104,Consumable,Gauze,50,10,100,2,0,5,V001
+2025-01-08,105,Consumable,Pump Set,10,1,20,1,1,1,V001

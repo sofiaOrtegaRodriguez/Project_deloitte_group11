@@ -18,19 +18,53 @@ datasource db {
 
 /// An Item is the pair (Item_ID, Item_Name) from the inventory CSV (ADR 0001).
 model Item {
-  id           Int        @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   /// `Item_ID` column of the source CSV.
-  sourceItemId Int        @map("source_item_id")
+  sourceItemId      Int                @map("source_item_id")
   /// `Item_Name` column of the source CSV.
-  name         String
+  name              String
   /// Category (`Item_Type`) taken from the Item's latest Snapshot.
-  category     String
+  category          String
   /// Vendor (`Vendor_ID`) taken from the Item's latest Snapshot.
-  vendorCode   String     @map("vendor_code")
-  snapshots    Snapshot[]
+  vendorCode        String             @map("vendor_code")
+  snapshots         Snapshot[]
+  thresholdOverride ThresholdOverride?
 
   @@unique([sourceItemId, name])
   @@map("items")
+}
+
+/// Global settings: a single row (id = 1), enforced by a CHECK constraint. Application table, never touched
+/// by the ETL. When the row is missing, the defaults below apply (see src/settings/settings.service.ts).
+model Settings {
+  id                   Int       @id @default(1)
+  /// Reference Date. Null means "the last date in the dataset".
+  referenceDate        DateTime? @map("reference_date") @db.Date
+  /// Cumulative share of Stock Value (%) covered by ABC class A.
+  abcThresholdA        Float     @default(80) @map("abc_threshold_a")
+  /// Cumulative share of Stock Value (%) covered by ABC classes A and B.
+  abcThresholdB        Float     @default(95) @map("abc_threshold_b")
+  urgencyFactor        Float     @default(0.5) @map("urgency_factor")
+  /// ABC Classes that can make an Item Critical (letters A, B, C).
+  criticalAbcClasses   String[]  @default(["A", "B"]) @map("critical_abc_classes")
+  /// Stock Turnover per year below which an Item is a Low-Turnover Item.
+  lowTurnoverThreshold Float     @default(12) @map("low_turnover_threshold")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+/// A Director-set Min Required and/or Max Capacity for an Item. A null side means "no override".
+/// Application table, never touched by the ETL.
+model ThresholdOverride {
+  id          Int      @id @default(autoincrement())
+  itemId      Int      @unique @map("item_id")
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  minRequired Decimal? @map("min_required") @db.Decimal
+  maxCapacity Decimal? @map("max_capacity") @db.Decimal
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("threshold_overrides")
 }
 
 /// One row of the inventory CSV: the state of an Item on a date. Loaded unchanged: rows are never
@@ -93,11 +127,11 @@ model User {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  @@index([email])
   /// There is exactly one Director.
   @@unique([role], map: "users_single_director", where: raw("role = 'DIRECTOR'"))
   /// An email belongs to at most one User that is not Rejected.
   @@unique([email], map: "users_email_not_rejected", where: raw("status <> 'REJECTED'"))
+  @@index([email])
   @@map("users")
 }
 

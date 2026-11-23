@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { ExampleSecretsCheck } from './config/example-secrets';
 import { HealthController } from './health/health.controller';
+import { ItemsModule } from './items/items.module';
 import { PrismaModule } from './prisma/prisma.service';
 import { DirectorSeed } from './users/director-seed';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, ItemsModule],
   controllers: [HealthController],
   // ExampleSecretsCheck runs on module init, before DirectorSeed (application bootstrap).
   providers: [ExampleSecretsCheck, DirectorSeed],
