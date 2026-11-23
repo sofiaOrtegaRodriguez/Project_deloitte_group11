@@ -152,6 +152,7 @@ model User {
 
   /// There is exactly one Director.
   alertEvents  AlertEvent[]
+  notifications Notification[]
 
   @@unique([role], map: "users_single_director", where: raw("role = 'DIRECTOR'"))
   /// An email belongs to at most one User that is not Rejected.
@@ -357,4 +358,31 @@ model SimulationState {
   lastStepAt            DateTime?        @map("last_step_at")
 
   @@map("simulation_state")
+}
+
+/// A per-User inbox entry (bell). Alerts are team-wide, so Alert events produce one row per Active User.
+/// Access Requests never produce Notifications.
+model Notification {
+  id               Int              @id @default(autoincrement())
+  userId           Int              @map("user_id")
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             NotificationType
+  alertId          Int?             @map("alert_id")
+  itemId           Int?             @map("item_id")
+  recommendationId Int?             @map("recommendation_id")
+  message          String
+  createdAt        DateTime         @default(now()) @map("created_at")
+  readAt           DateTime?        @map("read_at")
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  ALERT_CREATED
+  ALERT_ESCALATED
+  ALERT_REOPENED
+  REMINDER
+  DRAFT_STALE
+  RECOMMENDATION_DECISION
 }

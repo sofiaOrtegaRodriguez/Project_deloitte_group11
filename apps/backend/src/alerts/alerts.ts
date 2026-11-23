@@ -3,6 +3,12 @@
 // functions through AlertsService: Reminders (13), Recommendation-driven status changes (15), Reopening (17).
 import type { AlertLevel, AlertStatus, PrismaClient } from '../generated/prisma/client';
 import type { ItemIndicators } from '../indicators/types';
+import {
+  alertCreatedMessage,
+  alertEscalatedMessage,
+  alertReopenedMessage,
+  notifyAllActiveUsers,
+} from '../notifications/notifications';
 
 /** The statuses a person can choose by hand. NEW and CLEARED are only set by the system. */
 export const MANUAL_STATUSES = ['VIEWED', 'ACKNOWLEDGED', 'IGNORED', 'RESOLVED'] as const satisfies readonly AlertStatus[];
@@ -39,7 +45,7 @@ export async function syncAlerts(prisma: PrismaClient, items: readonly ItemIndic
 
     if (!alert) {
       if (!level) continue;
-      await prisma.alert.create({
+      const created = await prisma.alert.create({
         data: {
           itemId: item.itemId,
           level,
@@ -47,6 +53,12 @@ export async function syncAlerts(prisma: PrismaClient, items: readonly ItemIndic
           priorityScore: item.priorityScore,
           events: { create: { type: 'CREATED', toStatus: 'NEW', toLevel: level } },
         },
+      });
+      await notifyAllActiveUsers(prisma, {
+        type: 'ALERT_CREATED',
+        alertId: created.id,
+        itemId: item.itemId,
+        message: alertCreatedMessage(await itemName(prisma, item.itemId), level),
       });
       summary.created++;
     } else if (!level) {
@@ -64,6 +76,12 @@ export async function syncAlerts(prisma: PrismaClient, items: readonly ItemIndic
             create: { type: 'ESCALATED', fromStatus: alert.status, toStatus: 'NEW', fromLevel: alert.level, toLevel: level },
           },
         },
+      });
+      await notifyAllActiveUsers(prisma, {
+        type: 'ALERT_ESCALATED',
+        alertId: alert.id,
+        itemId: item.itemId,
+        message: alertEscalatedMessage(await itemName(prisma, item.itemId)),
       });
       summary.escalated++;
     } else if (alert.level === 'CRITICAL' && level === 'ATTENTION') {
@@ -88,6 +106,11 @@ export async function syncAlerts(prisma: PrismaClient, items: readonly ItemIndic
     }
   }
   return summary;
+}
+
+async function itemName(prisma: PrismaClient, itemId: number): Promise<string> {
+  const item = await prisma.item.findUnique({ where: { id: itemId }, select: { name: true } });
+  return item?.name ?? `Item ${itemId}`;
 }
 
 function clear(prisma: PrismaClient, alertId: number, from: AlertStatus) {
@@ -134,7 +157,7 @@ export async function changeStatus(
 /** Reopening: the same Alert returns to New, with the reason recorded (ADR 0004). Used by Reminders and overdue deliveries. */
 export async function reopen(prisma: PrismaClient, alertId: number, reason: string) {
   const alert = await requireOpenAlert(prisma, alertId);
-  return prisma.alert.update({
+  const reopened = await prisma.alert.update({
     where: { id: alertId },
     data: {
       status: 'NEW',
@@ -142,6 +165,13 @@ export async function reopen(prisma: PrismaClient, alertId: number, reason: stri
       events: { create: { type: 'REOPENED', fromStatus: alert.status, toStatus: 'NEW', userId: null, note: reason } },
     },
   });
+  await notifyAllActiveUsers(prisma, {
+    type: 'ALERT_REOPENED',
+    alertId,
+    itemId: alert.itemId,
+    message: alertReopenedMessage(await itemName(prisma, alert.itemId), reason),
+  });
+  return reopened;
 }
 
 /** Comments are allowed in any status, Cleared included. */

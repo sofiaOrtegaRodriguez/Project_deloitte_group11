@@ -7,6 +7,7 @@ import { ExampleSecretsCheck } from './config/example-secrets';
 import { FiltersModule } from './filters/filters.module';
 import { HealthController } from './health/health.controller';
 import { ItemsModule } from './items/items.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PlanningModule } from './planning/planning.module';
 import { PrismaModule } from './prisma/prisma.service';
 import { RecommendationsModule } from './recommendations/recommendations.module';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
     SimulationModule,
     PlanningModule,
     RecommendationsModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   // ExampleSecretsCheck runs on module init, before DirectorSeed (application bootstrap).
