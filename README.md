@@ -182,3 +182,4 @@ The dataset is synthetic and only weakly consistent. Hosstock loads it as it is 
 - 37% of Snapshots (186 of 500) have stock above Max Capacity, and 13 have a minimum above the maximum. These are flagged, not corrected.
 - The vendor file lists one item per vendor, while the inventory shows every vendor supplying every product. Vendor data is therefore used only for names and the reference Contracted Lead Time ([ADR 0002](docs/adr/0002-dataset-scope.md)).
 - Each Item has only about 10 Snapshots over 500 days, so indicators use the carried-forward Item State ([ADR 0003](docs/adr/0003-as-of-item-state-and-indicator-approximations.md)).
+- If an Item has duplicate Snapshots on its latest date, its Category and Vendor are taken from the first of those rows in the file. The other copies are still loaded and flagged as duplicates. The current dataset has no duplicates.
