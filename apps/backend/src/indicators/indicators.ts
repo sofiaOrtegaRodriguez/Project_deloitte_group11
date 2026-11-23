@@ -189,11 +189,16 @@ export function urgencyLevelOf(
   return autonomyDays <= replenishmentTimeDays ? 'ATTENTION' : 'NORMAL';
 }
 
-/** Computes every indicator for `items` over `period`. The Item State at `period.end` is the "current" one. */
+/**
+ * Computes every indicator for `items` over `period`. The Item State at `period.end` is the "current" one.
+ * `keep` selects a slice AFTER the whole portfolio has been classified (ABC Class needs every Item): the returned
+ * `items`, `portfolio` and `availabilitySeries` cover only the kept Items, but their classifications do not change.
+ */
 export function computeIndicators(
   items: ItemInput[],
   period: Period,
   config: IndicatorConfig,
+  keep?: (indicators: ItemIndicators) => boolean,
 ): IndicatorsResult {
   const startDay = dayNumber(period.start);
   const endDay = dayNumber(period.end);
@@ -258,16 +263,16 @@ export function computeIndicators(
         : Math.max(0, r.state!.replenishmentTimeDays - r.stockAutonomyDays) * r.state!.avgUsagePerDay * r.state!.unitCost;
   }
 
+  const kept = keep ? results.map((r) => keep(r)) : null;
   return {
     period,
-    items: results,
-    portfolio: portfolioOf(withState),
-    availabilitySeries: availabilitySeries(series, startDay),
+    items: kept ? results.filter((_, i) => kept[i]) : results,
+    portfolio: portfolioOf(keep ? withState.filter((r) => keep(r)) : withState),
+    availabilitySeries: availabilitySeries(kept ? series.filter((_, i) => kept[i]) : series, startDay, length),
   };
 }
 
-function availabilitySeries(series: (ItemState | null)[][], startDay: number): AvailabilityPoint[] {
-  const length = series[0]?.length ?? 0;
+function availabilitySeries(series: (ItemState | null)[][], startDay: number, length: number): AvailabilityPoint[] {
   const points: AvailabilityPoint[] = [];
   for (let d = 0; d < length; d++) {
     const states = series.map((s) => s[d]).filter((s): s is ItemState => s !== null);

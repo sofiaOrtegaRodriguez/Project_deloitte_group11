@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import type { TopItem } from '@/lib/dashboard';
+import { EMPTY_FILTERS, withFilters, type Filters } from '@/lib/filters';
 import { URGENCY_DOT, URGENCY_LABEL } from './urgency-counts';
 
 const eur = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const num1 = new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 1 });
 
 /** The 10 Items with the highest Priority Score. Each row links to the Item detail (`/inventory/[id]`, ticket 08). */
-export function TopItems({ items }: { items: TopItem[] }) {
+export function TopItems({ items, filters = EMPTY_FILTERS }: { items: TopItem[]; filters?: Filters }) {
   return (
     <section aria-label="Top 10 Items by Priority Score" className="rounded-lg border bg-background">
       <h2 className="border-b px-3 py-2 text-sm font-medium">Top 10 by Priority Score</h2>
@@ -29,7 +30,7 @@ export function TopItems({ items }: { items: TopItem[] }) {
               <tr key={item.id} data-testid="top-item" className="hover:bg-muted">
                 <td className="px-3 py-1.5 tabular-nums text-muted-foreground">{index + 1}</td>
                 <td className="px-3 py-1.5">
-                  <Link href={`/inventory/${item.id}`} className="font-medium hover:underline">
+                  <Link href={withFilters(`/inventory/${item.id}`, filters)} className="font-medium hover:underline">
                     {item.name}
                   </Link>
                   <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>

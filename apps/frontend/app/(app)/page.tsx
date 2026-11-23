@@ -1,13 +1,26 @@
 'use client';
 
+import { Suspense } from 'react';
 import { AlertsWidget } from '@/components/alerts/alerts-widget';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
 import { TopItems } from '@/components/dashboard/top-items';
 import { UrgencyCounts } from '@/components/dashboard/urgency-counts';
+import { FilterBar } from '@/components/filter-bar';
 import { useDashboard } from '@/lib/dashboard';
+import { useFilters } from '@/lib/filters';
 
 export default function DashboardPage() {
-  const { data, isPending, error } = useDashboard();
+  // useSearchParams (the filters live in the URL) needs a Suspense boundary.
+  return (
+    <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+function Dashboard() {
+  const { filters, query } = useFilters();
+  const { data, isPending, error } = useDashboard(query);
 
   return (
     <div className="space-y-4">
@@ -20,6 +33,7 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
+      <FilterBar />
       {isPending && <p className="text-muted-foreground">Loading…</p>}
       {error && (
         <p role="alert" className="text-destructive">
@@ -33,7 +47,7 @@ export default function DashboardPage() {
           <>
             <KpiCards data={data} />
             <UrgencyCounts counts={data.urgencyCounts} />
-            <TopItems items={data.topItems} />
+            <TopItems items={data.topItems} filters={filters} />
             {/* Space for later widgets: charts (ticket 07), Recommendations (15). Add each as its own component. */}
           </>
         ))}

@@ -1,23 +1,9 @@
-import { BadRequestException, Controller, Get, Injectable, Module, Query } from '@nestjs/common';
-import { IsOptional, Matches } from 'class-validator';
-import { dayNumber } from '../indicators/indicators';
-import { computeFromDatabase } from '../indicators/load-indicators';
+import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
+import { FilterQuery, parseFilters, resolvePeriod, selectSlice } from '../filters/filters';
+import { computeIndicators, previousPeriod } from '../indicators/indicators';
+import { loadIndicatorInputs } from '../indicators/load-indicators';
 import type { IndicatorConfig, ItemIndicators, PortfolioIndicators, Period } from '../indicators/types';
 import { PrismaService } from '../prisma/prisma.service';
-
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-export class ItemsQuery {
-  /** First day of the period. Default: the first date in the dataset. */
-  @IsOptional()
-  @Matches(ISO_DAY, { message: 'from must be a date like 2026-02-12' })
-  from?: string;
-
-  /** Last day of the period, which is the day the Item State is read from. Default: the Reference Date. */
-  @IsOptional()
-  @Matches(ISO_DAY, { message: 'to must be a date like 2026-02-12' })
-  to?: string;
-}
 
 export interface ItemRow extends Omit<ItemIndicators, 'itemId'> {
   id: number;
@@ -33,7 +19,11 @@ export interface ItemsResponse {
   referenceDate: string | null;
   period: Period | null;
   config: IndicatorConfig;
+  /** Portfolio indicators of the filtered slice. */
   portfolio: PortfolioIndicators | null;
+  /** The previous period of the same length, and the same Items' portfolio indicators over it. */
+  previousPeriod: Period | null;
+  previousPortfolio: PortfolioIndicators | null;
   items: ItemRow[];
 }
 
@@ -41,28 +31,19 @@ export interface ItemsResponse {
 export class ItemsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: ItemsQuery): Promise<ItemsResponse> {
-    const from = query.from;
-    const to = query.to;
-    for (const date of [from, to]) {
-      // Date.parse rolls impossible days over (2025-02-30 becomes 2 March), so check the round trip.
-      if (date && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) {
-        throw new BadRequestException(`Invalid date: ${date}`);
-      }
-    }
-    if (from && to && dayNumber(from) > dayNumber(to)) throw new BadRequestException('from must not be after to');
-
-    let computed: Awaited<ReturnType<typeof computeFromDatabase>>;
-    try {
-      computed = await computeFromDatabase(this.prisma, { from, to });
-    } catch (error) {
-      // A period that starts after the Reference Date (the default end) is the caller's mistake.
-      if (error instanceof Error && error.message.startsWith('Invalid period')) throw new BadRequestException(error.message);
-      throw error;
-    }
-    const { referenceDate, config, result } = computed;
-    if (!result) return { referenceDate, period: null, config, portfolio: null, items: [] };
+  async list(query: FilterQuery): Promise<ItemsResponse> {
+    const { from, to, filters } = parseFilters(query);
+    const inputs = await loadIndicatorInputs(this.prisma);
+    const { referenceDate, settings } = inputs;
+    const { config } = settings;
+    const period = resolvePeriod(inputs, from, to);
+    if (!period) return { referenceDate, period: null, config, portfolio: null, previousPeriod: null, previousPortfolio: null, items: [] };
     const items = await this.prisma.item.findMany({ orderBy: { id: 'asc' } });
+    const result = computeIndicators(inputs.items, period, config, selectSlice(filters, new Map(items.map((i) => [i.id, i]))));
+    // The comparison covers the same Items as the current slice (see filters.ts).
+    const sliceIds = new Set(result.items.map((r) => r.itemId));
+    const prevPeriod = previousPeriod(period);
+    const previous = computeIndicators(inputs.items, prevPeriod, config, (r) => sliceIds.has(r.itemId));
     const vendorNames = new Map((await this.prisma.vendor.findMany()).map((v) => [v.code, v.name]));
     const byId = new Map(result.items.map((r) => [r.itemId, r]));
 
@@ -71,7 +52,9 @@ export class ItemsService {
       period: result.period,
       config,
       portfolio: result.portfolio,
-      items: items.map((item) => {
+      previousPeriod: prevPeriod,
+      previousPortfolio: previous.portfolio,
+      items: items.filter((item) => byId.has(item.id)).map((item) => {
         const { itemId: _itemId, ...indicators } = byId.get(item.id)!;
         return {
           id: item.id,
@@ -91,9 +74,9 @@ export class ItemsService {
 export class ItemsController {
   constructor(private readonly items: ItemsService) {}
 
-  /** Every Item with its indicators and classifications. Requires login (global guard). */
+  /** Every Item of the filtered slice with its indicators and classifications. Requires login (global guard). */
   @Get()
-  list(@Query() query: ItemsQuery): Promise<ItemsResponse> {
+  list(@Query() query: FilterQuery): Promise<ItemsResponse> {
     return this.items.list(query);
   }
 }

@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatDecimal, formatEur, formatInteger } from '@/lib/format';
 import { nextSort, searchItems, sortItems, type Sort, type SortKey } from '@/lib/inventory-table';
+import { EMPTY_FILTERS, withFilters, type Filters } from '@/lib/filters';
 import type { ItemRow, StockStatus, UrgencyLevel } from '@/lib/items';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +40,7 @@ const URGENCY: Record<UrgencyLevel, { label: string; className: string }> = {
 };
 
 /** The Item table. Takes the (already filtered) Items as a prop so filters can be added upstream. */
-export function InventoryTable({ items }: { items: ItemRow[] }) {
+export function InventoryTable({ items, filters = EMPTY_FILTERS }: { items: ItemRow[]; filters?: Filters }) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<Sort>({ key: 'name', direction: 'asc' });
   const rows = useMemo(() => sortItems(searchItems(items, search), sort), [items, search, sort]);
@@ -88,7 +89,7 @@ export function InventoryTable({ items }: { items: ItemRow[] }) {
           </thead>
           <tbody className="divide-y">
             {rows.map((item) => (
-              <ItemRowView key={item.id} item={item} />
+              <ItemRowView filters={filters} key={item.id} item={item} />
             ))}
             {rows.length === 0 && (
               <tr>
@@ -104,14 +105,14 @@ export function InventoryTable({ items }: { items: ItemRow[] }) {
   );
 }
 
-function ItemRowView({ item }: { item: ItemRow }) {
+function ItemRowView({ item, filters }: { item: ItemRow; filters: Filters }) {
   const below = item.belowMinimum === true;
   const urgency = item.urgencyLevel ? URGENCY[item.urgencyLevel] : null;
   return (
     <tr className={cn('hover:bg-accent', below && 'bg-critical/5 shadow-[inset_3px_0_0_var(--urgency-critical)]')}>
       <td className="px-2 py-1.5">
         {/* Ticket 08 adds the /inventory/[id] route this links to. */}
-        <Link href={`/inventory/${item.id}`} className="font-medium text-accent-foreground hover:underline">
+        <Link href={withFilters(`/inventory/${item.id}`, filters)} className="font-medium text-accent-foreground hover:underline">
           {item.name}
         </Link>
         <span className="ml-1.5 text-muted-foreground">#{item.sourceItemId}</span>

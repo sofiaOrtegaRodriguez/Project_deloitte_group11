@@ -1,24 +1,11 @@
-import { BadRequestException, Controller, Get, Injectable, Module, Query } from '@nestjs/common';
-import { IsOptional, Matches } from 'class-validator';
-import { computeIndicators, dayNumber, previousPeriod } from '../indicators/indicators';
+import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
+import { FilterQuery, parseFilters, resolvePeriod, selectSlice } from '../filters/filters';
+import { computeIndicators, previousPeriod } from '../indicators/indicators';
 import { loadIndicatorInputs } from '../indicators/load-indicators';
-import type { IndicatorsResult, ItemInput, Period, PortfolioIndicators, UrgencyLevel } from '../indicators/types';
+import type { IndicatorsResult, Period, PortfolioIndicators, UrgencyLevel } from '../indicators/types';
 import { PrismaService } from '../prisma/prisma.service';
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const TOP_N = 10;
-
-export class DashboardQuery {
-  /** First day of the period. Default: the first date in the dataset. */
-  @IsOptional()
-  @Matches(ISO_DAY, { message: 'from must be a date like 2026-02-12' })
-  from?: string;
-
-  /** Last day of the period. Default: the Reference Date. */
-  @IsOptional()
-  @Matches(ISO_DAY, { message: 'to must be a date like 2026-02-12' })
-  to?: string;
-}
 
 export interface KpiValues {
   stockValue: number;
@@ -85,31 +72,16 @@ function delta(current: number | null, previous: number | null): KpiDelta {
   return { absolute: current - previous, pct: previous === 0 ? null : ((current - previous) / Math.abs(previous)) * 100 };
 }
 
-/** Filter set applied to the Items before computing. Ticket 06 adds the shared filters here. */
-export type DashboardSlice = Record<string, never>;
-
-/** The one place that selects which Items the dashboard covers. Today: all of them. */
-export function selectSlice(items: ItemInput[], _slice: DashboardSlice): ItemInput[] {
-  return items;
-}
-
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async get(query: DashboardQuery): Promise<DashboardResponse> {
-    const { from, to } = query;
-    for (const date of [from, to]) {
-      // Date.parse rolls impossible days over, so check the round trip.
-      if (date && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) {
-        throw new BadRequestException(`Invalid date: ${date}`);
-      }
-    }
-    if (from && to && dayNumber(from) > dayNumber(to)) throw new BadRequestException('from must not be after to');
+  async get(query: FilterQuery): Promise<DashboardResponse> {
+    const { from, to, filters } = parseFilters(query);
 
     const inputs = await loadIndicatorInputs(this.prisma);
-    const end = to ?? inputs.referenceDate;
-    if (!end || !inputs.datasetRange) {
+    const period = resolvePeriod(inputs, from, to);
+    if (!period) {
       return {
         referenceDate: inputs.referenceDate,
         period: null,
@@ -121,15 +93,15 @@ export class DashboardService {
         topItems: [],
       };
     }
-    const start = from ?? (inputs.datasetRange.start < end ? inputs.datasetRange.start : end);
-    if (dayNumber(start) > dayNumber(end)) throw new BadRequestException(`Invalid period: ${start} is after ${end}`);
 
-    const items = selectSlice(inputs.items, {});
-    const period: Period = { start, end };
+    const rows = await this.prisma.item.findMany({ orderBy: { id: 'asc' } });
+    const byId = new Map(rows.map((r) => [r.id, r]));
     const prevPeriod = previousPeriod(period);
     const config = inputs.settings.config;
-    const current: IndicatorsResult = computeIndicators(items, period, config);
-    const previous: IndicatorsResult = computeIndicators(items, prevPeriod, config);
+    // The slice is decided on the current period; the comparison covers the same Items (see filters.ts).
+    const current: IndicatorsResult = computeIndicators(inputs.items, period, config, selectSlice(filters, byId));
+    const sliceIds = new Set(current.items.map((i) => i.itemId));
+    const previous: IndicatorsResult = computeIndicators(inputs.items, prevPeriod, config, (i) => sliceIds.has(i.itemId));
 
     const currentKpis = kpis(current.portfolio);
     const previousKpis = kpis(previous.portfolio);
@@ -138,8 +110,6 @@ export class DashboardService {
       KPI_KEYS.map((k) => [k, hasPrevious ? delta(currentKpis[k], previousKpis[k]) : { absolute: null, pct: null }]),
     ) as Record<KpiKey, KpiDelta>;
 
-    const rows = await this.prisma.item.findMany({ orderBy: { id: 'asc' } });
-    const byId = new Map(rows.map((r) => [r.id, r]));
     const topItems = current.items
       .filter((i) => i.priorityScore !== null && i.urgencyLevel !== null && byId.has(i.itemId))
       .sort((a, b) => b.priorityScore! - a.priorityScore! || a.itemId - b.itemId)
@@ -177,7 +147,7 @@ export class DashboardController {
 
   /** KPIs for the period and for the previous period of the same length. Requires login (global guard). */
   @Get()
-  get(@Query() query: DashboardQuery): Promise<DashboardResponse> {
+  get(@Query() query: FilterQuery): Promise<DashboardResponse> {
     return this.dashboard.get(query);
   }
 }

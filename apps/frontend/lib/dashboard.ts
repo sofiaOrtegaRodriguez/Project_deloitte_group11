@@ -48,11 +48,10 @@ export interface DashboardData {
   topItems: TopItem[];
 }
 
-/** Dashboard data for the period. Other tickets add their filters to `params` (same names as the API). */
-export function useDashboard(params: Record<string, string | undefined> = {}) {
-  const search = new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => !!e[1])).toString();
+/** Dashboard data for the filtered slice. `query` is `filterQuery(filters)` (see lib/filters.ts). */
+export function useDashboard(query = '') {
   return useQuery({
-    queryKey: ['dashboard', search],
-    queryFn: () => api<DashboardData>(`/dashboard${search ? `?${search}` : ''}`),
+    queryKey: ['dashboard', query],
+    queryFn: () => api<DashboardData>(`/dashboard${query ? `?${query}` : ''}`),
   });
 }

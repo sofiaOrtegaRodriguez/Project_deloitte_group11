@@ -33,6 +33,10 @@ export interface ItemsResponse {
   items: ItemRow[];
 }
 
-export function useItems() {
-  return useQuery({ queryKey: ['items'], queryFn: () => api<ItemsResponse>('/items') });
+/** Items of the filtered slice. `query` is `filterQuery(filters)` (see lib/filters.ts). */
+export function useItems(query = '') {
+  return useQuery({
+    queryKey: ['items', query],
+    queryFn: () => api<ItemsResponse>(`/items${query ? `?${query}` : ''}`),
+  });
 }
