@@ -1,4 +1,6 @@
 import { PagePlaceholder } from '@/components/page-placeholder';
+import { ConfigurationSection } from '@/components/settings/configuration-section';
+import { ThresholdOverridesSection } from '@/components/settings/threshold-overrides-section';
 import { UsersSection } from '@/components/users-section';
 
 export default function SettingsPage() {
@@ -8,6 +10,8 @@ export default function SettingsPage() {
         title="Settings"
         description="Configuration, Threshold Overrides, Simulation and logs."
       />
+      <ConfigurationSection />
+      <ThresholdOverridesSection />
       <UsersSection />
     </div>
   );

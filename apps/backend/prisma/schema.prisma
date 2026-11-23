@@ -67,6 +67,20 @@ model ThresholdOverride {
   @@map("threshold_overrides")
 }
 
+/// One change to the configuration (settings or a Threshold Override): when, who, and what went from old to new.
+/// `changes` is a list of `{ field, old, new }`. Application table, never touched by the ETL.
+model ConfigurationLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  userId    Int?     @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// The User's name at the time of the change.
+  userName  String   @map("user_name")
+  changes   Json
+
+  @@map("configuration_log")
+}
+
 /// One row of the inventory CSV: the state of an Item on a date. Loaded unchanged: rows are never
 /// dropped or corrected, and inconsistent values get Data Quality Flags (ADR 0002).
 /// Numbers are unconstrained NUMERIC so every digit of the source is kept, with no rounding.
@@ -126,6 +140,8 @@ model User {
   status       AccountStatus
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  configurationLogs ConfigurationLog[]
 
   /// There is exactly one Director.
   @@unique([role], map: "users_single_director", where: raw("role = 'DIRECTOR'"))
