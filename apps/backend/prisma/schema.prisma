@@ -143,6 +143,8 @@ model User {
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @updatedAt @map("updated_at")
   recommendations      Recommendation[]
+  submittedRecommendations Recommendation[] @relation("RecommendationSubmitter")
+  decidedRecommendations   Recommendation[] @relation("RecommendationDecider")
   recommendationEvents RecommendationEvent[]
 
   configurationLogs ConfigurationLog[]
@@ -278,6 +280,17 @@ model Recommendation {
   createdById       Int?                  @map("created_by_id")
   createdBy         User?                 @relation(fields: [createdById], references: [id])
   discardReason     String?               @map("discard_reason")
+  /// Who submitted it and when (the submitter is notified of the decision).
+  submittedById     Int?                  @map("submitted_by_id")
+  submittedBy       User?                 @relation("RecommendationSubmitter", fields: [submittedById], references: [id])
+  submittedAt       DateTime?             @map("submitted_at")
+  /// Director decision (Approve or Reject), with the mandatory comment on Reject.
+  decidedById       Int?                  @map("decided_by_id")
+  decidedBy         User?                 @relation("RecommendationDecider", fields: [decidedById], references: [id])
+  decidedAt         DateTime?             @map("decided_at")
+  decisionComment   String?               @map("decision_comment")
+  /// When it was Approved (ticket 17 computes the expected delivery date from it).
+  approvedAt        DateTime?             @map("approved_at")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
   events            RecommendationEvent[]
@@ -293,6 +306,9 @@ enum RecommendationEventType {
   CREATED
   EDITED
   DISCARDED
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 /// History of a Recommendation: who did what and when. A null user means the system.

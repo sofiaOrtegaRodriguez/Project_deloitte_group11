@@ -24,6 +24,9 @@ export const EVENT_LABELS: Record<string, string> = {
   CREATED: 'Created',
   EDITED: 'Edited',
   DISCARDED: 'Discarded',
+  SUBMITTED: 'Submitted',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
 };
 
 export interface RankingRow {
@@ -55,6 +58,26 @@ export interface HistoryEvent {
   type: string;
   user: Person | null;
   at: string;
+  details: { comment?: string | null } | null;
+}
+
+/** The Item's indicators frozen when the Draft was submitted. */
+export interface IndicatorSnapshot {
+  takenAt: string;
+  referenceDate: string | null;
+  quantity: number;
+  estimatedCost: number;
+  justification: string;
+  figures: Record<string, unknown>;
+  indicators: {
+    urgencyLevel: string | null;
+    priorityScore: number | null;
+    abcClass: string | null;
+    stockAutonomyDays: number | null;
+    replenishmentTimeDays: number | null;
+    stockValue: number | null;
+    state: { currentStock?: number; minRequired?: number; maxCapacity?: number } | null;
+  } | null;
 }
 
 export interface Recommendation {
@@ -70,6 +93,13 @@ export interface Recommendation {
   figures: { freedCapital: number };
   createdBy: Person | null;
   discardReason: string | null;
+  submittedBy: Person | null;
+  submittedAt: string | null;
+  decidedBy: Person | null;
+  decidedAt: string | null;
+  decisionComment: string | null;
+  approvedAt: string | null;
+  indicatorSnapshot: IndicatorSnapshot | null;
   createdAt: string;
   history: HistoryEvent[];
 }
@@ -116,6 +146,32 @@ export function useDiscardRecommendation() {
   return useRecommendationMutation(({ id, reason }: { id: number; reason?: string }) =>
     api<Recommendation>(`/recommendations/${id}/discard`, { method: 'POST', body: { reason } }),
   );
+}
+
+export function useSubmitRecommendation() {
+  return useRecommendationMutation(({ id }: { id: number }) =>
+    api<Recommendation>(`/recommendations/${id}/submit`, { method: 'POST' }),
+  );
+}
+
+export function useApproveRecommendation() {
+  return useRecommendationMutation(({ id }: { id: number }) =>
+    api<Recommendation>(`/recommendations/${id}/approve`, { method: 'POST' }),
+  );
+}
+
+export function useRejectRecommendation() {
+  return useRecommendationMutation(({ id, comment }: { id: number; comment: string }) =>
+    api<Recommendation>(`/recommendations/${id}/reject`, { method: 'POST', body: { comment } }),
+  );
+}
+
+/** The 5 Pending Approval Recommendations with the highest Priority Score (Dashboard widget). */
+export function useTopPendingRecommendations(limit = 5) {
+  return useQuery({
+    queryKey: [...RECOMMENDATIONS_KEY, 'top-pending', limit],
+    queryFn: () => api<Recommendation[]>(`/recommendations/top-pending?limit=${limit}`),
+  });
 }
 
 export const formatMoney = (n: number): string =>
