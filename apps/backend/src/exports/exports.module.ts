@@ -4,7 +4,7 @@ import ExcelJS from 'exceljs';
 import { DashboardService } from '../dashboard/dashboard.module';
 import { FilterQuery } from '../filters/filters';
 import { ItemsService } from '../items/items.module';
-import { RecommendationsService } from '../recommendations/recommendations.service';
+import { RecommendationsModule } from '../recommendations/recommendations.module';
 import { ViewDataService, type Cell, type ViewData, type ViewTable } from './view-data';
 
 /** A CSV field: quoted when it holds a comma, quote, CR or LF; quotes doubled. Numbers use "." and no grouping. */
@@ -94,8 +94,9 @@ export class ExportsController {
 }
 
 @Module({
+  imports: [RecommendationsModule],
   controllers: [ExportsController],
-  providers: [ViewDataService, ItemsService, DashboardService, RecommendationsService],
+  providers: [ViewDataService, ItemsService, DashboardService],
   exports: [ViewDataService],
 })
 export class ExportsModule {}
