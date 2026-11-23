@@ -227,6 +227,26 @@ describe('portfolio aggregates', () => {
     expect(availabilitySeries[9]).toEqual({ date: '2025-01-10', availabilityPct: 75, itemsWithState: 4 });
   });
 
+  it('Stock Value and consumption as daily series from the carried-forward state', () => {
+    const { valueSeries } = compute(mainItems());
+    expect(valueSeries).toHaveLength(10);
+    // Day 1: SNAP 100x10 + BIG 1000x20 + IDLE 50x2 = 21100; usage 5x10 + 50x20 + 0 = 1050.
+    expect(valueSeries[0]).toEqual({ date: '2025-01-01', stockValue: 21100, consumptionValue: 1050 });
+    // Day 4: LATE joins: + 30x5 = 150 stock, + 3x5 = 15 usage.
+    expect(valueSeries[3]).toEqual({ date: '2025-01-04', stockValue: 21250, consumptionValue: 1065 });
+    // Day 6: SNAP second Snapshot: 60x10 = 600 stock, 10x10 = 100 usage.
+    expect(valueSeries[5]).toEqual({ date: '2025-01-06', stockValue: 20850, consumptionValue: 1115 });
+    expect(valueSeries[9].stockValue).toBe(20850);
+  });
+
+  it('the value series covers only the kept slice and is 0 when no Item has a state', () => {
+    const slice = computeIndicators(mainItems(), PERIOD, DEFAULT_INDICATOR_CONFIG, (i) => i.itemId === SNAP);
+    expect(slice.valueSeries[0]).toEqual({ date: '2025-01-01', stockValue: 1000, consumptionValue: 50 });
+    expect(slice.valueSeries[9]).toEqual({ date: '2025-01-10', stockValue: 600, consumptionValue: 100 });
+    const ghost = compute([item(GHOST, [snap('2025-02-01', 10, 1, 20, 1, 1, 1)])]);
+    expect(ghost.valueSeries[0]).toEqual({ date: '2025-01-01', stockValue: 0, consumptionValue: 0 });
+  });
+
   it('an empty portfolio has null aggregates', () => {
     const { portfolio: empty } = compute([item(GHOST, [snap('2025-02-01', 10, 1, 20, 1, 1, 1)])]);
     expect(empty.itemsWithState).toBe(0);

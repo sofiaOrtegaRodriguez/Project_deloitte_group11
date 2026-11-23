@@ -108,6 +108,14 @@ export interface AvailabilityPoint {
   itemsWithState: number;
 }
 
+export interface ValuePoint {
+  date: string;
+  /** Σ stock x unit cost of the Items with a state that day. 0 when none. */
+  stockValue: number;
+  /** Σ avg usage per day x unit cost of the Items with a state that day: the value consumed that day. 0 when none. */
+  consumptionValue: number;
+}
+
 export interface PortfolioIndicators {
   itemsWithState: number;
   /** Median Stock Autonomy of the Items that consume stock. Null when there are none. */
@@ -132,4 +140,6 @@ export interface IndicatorsResult {
   items: ItemIndicators[];
   portfolio: PortfolioIndicators;
   availabilitySeries: AvailabilityPoint[];
+  /** Daily total Stock Value and consumption value, from the carried-forward Item State. */
+  valueSeries: ValuePoint[];
 }

@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react';
 import { AlertsWidget } from '@/components/alerts/alerts-widget';
+import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
 import { TopItems } from '@/components/dashboard/top-items';
 import { UrgencyCounts } from '@/components/dashboard/urgency-counts';
@@ -48,7 +49,8 @@ function Dashboard() {
             <KpiCards data={data} />
             <UrgencyCounts counts={data.urgencyCounts} />
             <TopItems items={data.topItems} filters={filters} />
-            {/* Space for later widgets: charts (ticket 07), Recommendations (15). Add each as its own component. */}
+            <DashboardCharts query={query} />
+            {/* Space for later widgets: Recommendations (15). Add each as its own component. */}
           </>
         ))}
       <AlertsWidget />

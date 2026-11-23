@@ -14,6 +14,7 @@ import type {
   SnapshotInput,
   StockStatus,
   UrgencyLevel,
+  ValuePoint,
 } from './types';
 
 const DAY_MS = 86_400_000;
@@ -269,6 +270,7 @@ export function computeIndicators(
     items: kept ? results.filter((_, i) => kept[i]) : results,
     portfolio: portfolioOf(keep ? withState.filter((r) => keep(r)) : withState),
     availabilitySeries: availabilitySeries(kept ? series.filter((_, i) => kept[i]) : series, startDay, length),
+    valueSeries: valueSeries(kept ? series.filter((_, i) => kept[i]) : series, startDay, length),
   };
 }
 
@@ -282,6 +284,22 @@ function availabilitySeries(series: (ItemState | null)[][], startDay: number, le
         states.length === 0 ? null : (states.filter((s) => s.currentStock >= s.minRequired).length / states.length) * 100,
       itemsWithState: states.length,
     });
+  }
+  return points;
+}
+
+function valueSeries(series: (ItemState | null)[][], startDay: number, length: number): ValuePoint[] {
+  const points: ValuePoint[] = [];
+  for (let d = 0; d < length; d++) {
+    let stockValue = 0;
+    let consumptionValue = 0;
+    for (const s of series) {
+      const state = s[d];
+      if (!state) continue;
+      stockValue += state.currentStock * state.unitCost;
+      consumptionValue += state.avgUsagePerDay * state.unitCost;
+    }
+    points.push({ date: isoDay(startDay + d), stockValue, consumptionValue });
   }
   return points;
 }
