@@ -13,6 +13,8 @@ import {
   type Recommendation,
 } from '@/lib/planning';
 
+import { StaleWarning } from './stale-warning';
+
 function EditForm({ rec, onDone }: { rec: Recommendation; onDone: () => void }) {
   const edit = useEditRecommendation();
   const [quantity, setQuantity] = useState(String(rec.quantity));
@@ -104,6 +106,7 @@ export function RecommendationCard({ rec, showItem = true }: { rec: Recommendati
         )}
         <span>Priority Score {rec.priorityScore === null ? '-' : rec.priorityScore.toFixed(1)}</span>
       </div>
+      {isDraft && <StaleWarning rec={rec} />}
       {mode === 'edit' ? (
         <EditForm rec={rec} onDone={() => setMode('view')} />
       ) : (

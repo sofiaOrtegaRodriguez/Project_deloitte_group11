@@ -278,6 +278,12 @@ model Recommendation {
   createdById       Int?                  @map("created_by_id")
   createdBy         User?                 @relation(fields: [createdById], references: [id])
   discardReason     String?               @map("discard_reason")
+  /// Stale Draft marker (ticket 16): when the current indicators first differed from `figures`. Null: not stale.
+  staleSince        DateTime?             @map("stale_since")
+  /// The figures the Draft would have now, kept while stale so the API can show old vs current.
+  currentFigures    Json?                 @map("current_figures")
+  /// When the owner was notified for the current staleness episode. Cleared with the marker.
+  staleNotifiedAt   DateTime?             @map("stale_notified_at")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
   events            RecommendationEvent[]
@@ -293,6 +299,7 @@ enum RecommendationEventType {
   CREATED
   EDITED
   DISCARDED
+  UPDATED_TO_CURRENT
 }
 
 /// History of a Recommendation: who did what and when. A null user means the system.

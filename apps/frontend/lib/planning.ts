@@ -24,6 +24,7 @@ export const EVENT_LABELS: Record<string, string> = {
   CREATED: 'Created',
   EDITED: 'Edited',
   DISCARDED: 'Discarded',
+  UPDATED_TO_CURRENT: 'Updated to current data',
 };
 
 export interface RankingRow {
@@ -68,6 +69,10 @@ export interface Recommendation {
   priorityScore: number | null;
   justification: string;
   figures: { freedCapital: number };
+  /** Stale Draft: the data changed since the Draft was made. */
+  stale: boolean;
+  staleSince: string | null;
+  oldVsCurrent: { field: string; old: number | string | boolean | null; current: number | string | boolean | null }[];
   createdBy: Person | null;
   discardReason: string | null;
   createdAt: string;
@@ -115,6 +120,12 @@ export function useEditRecommendation() {
 export function useDiscardRecommendation() {
   return useRecommendationMutation(({ id, reason }: { id: number; reason?: string }) =>
     api<Recommendation>(`/recommendations/${id}/discard`, { method: 'POST', body: { reason } }),
+  );
+}
+
+export function useUpdateToCurrent() {
+  return useRecommendationMutation((id: number) =>
+    api<Recommendation>(`/recommendations/${id}/update-to-current`, { method: 'POST' }),
   );
 }
 
