@@ -147,6 +147,9 @@ model User {
 
   configurationLogs ConfigurationLog[]
 
+  logAsAffected UserManagementLogEntry[] @relation("LogAffectedUser")
+  logAsActor    UserManagementLogEntry[] @relation("LogActor")
+
   /// There is exactly one Director.
   alertEvents  AlertEvent[]
 
@@ -304,4 +307,29 @@ model RecommendationEvent {
 
   @@index([recommendationId])
   @@map("recommendation_events")
+}
+
+/// An access decision recorded in the User Management Log.
+enum UserManagementAction {
+  APPROVE
+  REJECT
+  REMOVE
+  RESTORE
+}
+
+/// User Management Log: one row per approve, reject, remove or restore decision.
+model UserManagementLogEntry {
+  id             Int                  @id @default(autoincrement())
+  createdAt      DateTime             @default(now()) @map("created_at")
+  action         UserManagementAction
+  /// The User the decision was about.
+  affectedUserId Int                  @map("affected_user_id")
+  /// Who decided. Nullable: not every entry has a known actor.
+  actorId        Int?                 @map("actor_id")
+
+  affectedUser User  @relation("LogAffectedUser", fields: [affectedUserId], references: [id], onDelete: Cascade)
+  actor        User? @relation("LogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("user_management_log")
 }

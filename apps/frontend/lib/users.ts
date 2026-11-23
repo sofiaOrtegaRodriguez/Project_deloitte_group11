@@ -55,3 +55,35 @@ export function useDecideRequest() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: USERS_KEY }),
   });
 }
+
+export type LogAction = 'APPROVE' | 'REJECT' | 'REMOVE' | 'RESTORE';
+
+export interface LogEntry {
+  id: number;
+  date: string;
+  action: LogAction;
+  affectedUser: { id: number; name: string; email: string };
+  actor: { id: number; name: string } | null;
+}
+
+/** The User Management Log, newest first. Director only. */
+export function useUserManagementLog() {
+  return useQuery({ queryKey: [...USERS_KEY, 'log'], queryFn: () => api<LogEntry[]>('/user-management-log') });
+}
+
+/** Remove or restore a Procurement Team member, then refresh the lists and the log (all under the users key). */
+export function useRemoveRestore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: number; action: 'remove' | 'restore' }) =>
+      api<UserSummary>(`/users/${id}/${action}`, { method: 'POST' }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      api<void>('/auth/change-password', { method: 'POST', body }),
+  });
+}

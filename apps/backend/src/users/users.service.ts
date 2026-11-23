@@ -1,6 +1,6 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
-import type { AccountStatus, Role, User } from '../generated/prisma/client';
+import type { AccountStatus, Role, User, UserManagementAction } from '../generated/prisma/client';
 import { normaliseEmail } from '../auth/auth-user';
 import { hashPassword } from '../auth/password';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +13,15 @@ export interface UserSummary {
   role: Role;
   status: AccountStatus;
   createdAt: string;
+}
+
+/** A row of the User Management Log. */
+export interface LogEntry {
+  id: number;
+  date: string;
+  action: UserManagementAction;
+  affectedUser: { id: number; name: string; email: string };
+  actor: { id: number; name: string } | null;
 }
 
 export const toUserSummary = (u: User): UserSummary => ({
@@ -65,23 +74,61 @@ export class UsersService {
   }
 
   /** Approving makes the account Active with the Procurement Team role. */
-  approve(id: number): Promise<UserSummary> {
-    return this.decide(id, 'ACTIVE');
+  approve(id: number, actorId: number): Promise<UserSummary> {
+    return this.decide(id, 'PENDING', 'ACTIVE', 'APPROVE', actorId);
   }
 
-  reject(id: number): Promise<UserSummary> {
-    return this.decide(id, 'REJECTED');
+  reject(id: number, actorId: number): Promise<UserSummary> {
+    return this.decide(id, 'PENDING', 'REJECTED', 'REJECT', actorId);
   }
 
-  private async decide(id: number, status: 'ACTIVE' | 'REJECTED'): Promise<UserSummary> {
-    // Only a Pending request can be decided; the status in the WHERE makes a double click harmless.
-    const result = await this.prisma.user.updateMany({
-      where: { id, status: 'PENDING' },
-      data: { status, ...(status === 'ACTIVE' ? { role: 'PROCUREMENT_TEAM' as const } : {}) },
+  /** Removing blocks the User at once: the guard reads the status on every request. The Director cannot be removed. */
+  async remove(id: number, actorId: number): Promise<UserSummary> {
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
+    if (target.role === 'DIRECTOR') throw new ForbiddenException('The Director cannot be removed');
+    return this.decide(id, 'ACTIVE', 'REMOVED', 'REMOVE', actorId, 'Only an Active User can be removed');
+  }
+
+  restore(id: number, actorId: number): Promise<UserSummary> {
+    return this.decide(id, 'REMOVED', 'ACTIVE', 'RESTORE', actorId, 'Only a Removed User can be restored');
+  }
+
+  /** The User Management Log, newest first. */
+  async log(): Promise<LogEntry[]> {
+    const rows = await this.prisma.userManagementLogEntry.findMany({
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: { affectedUser: true, actor: true },
     });
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
-    if (result.count === 0) throw new ConflictException('This access request has already been decided');
-    return toUserSummary(user);
+    return rows.map((r) => ({
+      id: r.id,
+      date: r.createdAt.toISOString(),
+      action: r.action,
+      affectedUser: { id: r.affectedUser.id, name: r.affectedUser.name, email: r.affectedUser.email },
+      actor: r.actor ? { id: r.actor.id, name: r.actor.name } : null,
+    }));
+  }
+
+  /** Moves a User between statuses and writes the log entry in the same transaction. */
+  private async decide(
+    id: number,
+    from: AccountStatus,
+    to: AccountStatus,
+    action: UserManagementAction,
+    actorId: number,
+    conflict = 'This access request has already been decided',
+  ): Promise<UserSummary> {
+    return this.prisma.$transaction(async (tx) => {
+      // The status in the WHERE makes a double click harmless.
+      const result = await tx.user.updateMany({
+        where: { id, status: from },
+        data: { status: to, ...(to === 'ACTIVE' && from === 'PENDING' ? { role: 'PROCUREMENT_TEAM' as const } : {}) },
+      });
+      const user = await tx.user.findUnique({ where: { id } });
+      if (!user) throw new NotFoundException('User not found');
+      if (result.count === 0) throw new ConflictException(conflict);
+      await tx.userManagementLogEntry.create({ data: { action, affectedUserId: id, actorId } });
+      return toUserSummary(user);
+    });
   }
 }

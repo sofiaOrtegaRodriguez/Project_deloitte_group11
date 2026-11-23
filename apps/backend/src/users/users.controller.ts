@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
-import { Public, Roles } from '../auth/decorators';
+import { CurrentUser, Public, Roles } from '../auth/decorators';
+import type { AuthUser } from '../auth/auth-user';
 import type { AccountStatus } from '../generated/prisma/client';
-import { UsersService, type UserSummary } from './users.service';
+import { UsersService, type LogEntry, type UserSummary } from './users.service';
 
 export class RegisterDto {
   @IsString()
@@ -55,14 +56,34 @@ export class UsersController {
   @Roles('DIRECTOR')
   @Post('users/:id/approve')
   @HttpCode(200)
-  approve(@Param('id', ParseIntPipe) id: number): Promise<UserSummary> {
-    return this.users.approve(id);
+  approve(@Param('id', ParseIntPipe) id: number, @CurrentUser() actor: AuthUser): Promise<UserSummary> {
+    return this.users.approve(id, actor.id);
   }
 
   @Roles('DIRECTOR')
   @Post('users/:id/reject')
   @HttpCode(200)
-  reject(@Param('id', ParseIntPipe) id: number): Promise<UserSummary> {
-    return this.users.reject(id);
+  reject(@Param('id', ParseIntPipe) id: number, @CurrentUser() actor: AuthUser): Promise<UserSummary> {
+    return this.users.reject(id, actor.id);
+  }
+
+  @Roles('DIRECTOR')
+  @Post('users/:id/remove')
+  @HttpCode(200)
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() actor: AuthUser): Promise<UserSummary> {
+    return this.users.remove(id, actor.id);
+  }
+
+  @Roles('DIRECTOR')
+  @Post('users/:id/restore')
+  @HttpCode(200)
+  restore(@Param('id', ParseIntPipe) id: number, @CurrentUser() actor: AuthUser): Promise<UserSummary> {
+    return this.users.restore(id, actor.id);
+  }
+
+  @Roles('DIRECTOR')
+  @Get('user-management-log')
+  log(): Promise<LogEntry[]> {
+    return this.users.log();
   }
 }

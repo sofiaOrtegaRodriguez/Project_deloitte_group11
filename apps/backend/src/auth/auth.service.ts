@@ -1,11 +1,11 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ACCOUNT_STATUS_MESSAGES, INVALID_CREDENTIALS } from './auth.constants';
 import type { SessionPayload } from './auth.guard';
 import { normaliseEmail, toAuthUser, type AuthUser } from './auth-user';
-import { DUMMY_HASH, verifyPassword } from './password';
+import { DUMMY_HASH, hashPassword, verifyPassword } from './password';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +28,15 @@ export class AuthService {
 
     const payload: SessionPayload = { sub: user.id };
     return { user: toAuthUser(user), token: await this.jwt.signAsync(payload) };
+  }
+
+  /** Any User can change their own password, but must give the current one. */
+  async changePassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(newPassword) } });
   }
 
   /**
