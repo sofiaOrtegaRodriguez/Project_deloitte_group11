@@ -160,9 +160,20 @@ Pages you open without being logged in send you to the Login page, and so does a
 - The ETL only stops when a value can't be stored at all: a missing column, an empty field, text where a number or a date is expected, or an `Item_ID` that isn't a whole number. It then reports the line and column and leaves the database unchanged. Both files are checked before anything is written.
 - Running it again fully replaces the source data (Snapshots, Vendors) inside a single transaction. Items keep their internal ids, so the work stored about them is preserved.
 
+### What the ETL keeps and replaces
+
+| Replaced on every run | Kept on every run (never touched) |
+|---|---|
+| Snapshots and Vendors (the whole tables, in one transaction: if anything fails, the previous data stays) | Users, Alerts and their history and comments, Recommendations and their history, Threshold Overrides, settings (including the Reference Date), Notifications, the Configuration Log, the User Management Log, the Simulation and Reminder state |
+| Item Category and Vendor (taken from each Item's latest Snapshot) | Items themselves: they are matched by `Item_ID` + `Item_Name`, so their internal ids stay the same. An Item that is no longer in the files is not deleted, so what people did about it stays |
+
+When the load is committed, the ETL runs the full recalculation, in this order: indicators, Alert synchronisation, auto-Drafts and Stale Draft detection. The Alerts, Drafts and Stale Drafts you see after a re-run therefore reflect the new data. If the recalculation fails, the data stays loaded and the error names the step: run `npm run etl` again to retry.
+
+To re-run it safely, just run `npm run etl` again. It prints the Items, Snapshots and Vendors loaded, the Data Quality Flags, and the outcome of the recalculation (Critical and Attention Items, open Alerts, open and stale Drafts). A file with an invalid value stops the ETL before anything is written.
+
 ---
 
-## Tests
+## Running the tests
 
 ```
 npm test
@@ -171,18 +182,63 @@ npm test
 This runs two groups of tests:
 
 - **unit**: pure logic with no database. Run them alone with `npm run test:unit -w apps/backend`.
-- **api**: backend behaviour against the test database from `TEST_DATABASE_URL`. That database is created automatically, the ETL loads small hand-written fixture files into it, and it is emptied between tests. It must be different from `DATABASE_URL`.
+- **api**: backend behaviour against the test database from `TEST_DATABASE_URL`. That database is created automatically, the ETL loads small hand-written fixture files into it, and it is emptied between tests. It must be different from `DATABASE_URL`: the tests never use the database you work with.
 
-To type-check everything: `npm run typecheck`.
+Set `TEST_DATABASE_URL` in `.env` (see the table in step 4). To type-check everything: `npm run typecheck`.
 
 ---
 
-## Data limitations
+## Data limitations and approximations
 
-The dataset is synthetic and only weakly consistent. Hosstock loads it as it is and documents its approximations:
+This section is for anyone evaluating Hosstock. The dataset is synthetic and only weakly consistent, so Hosstock loads it as it is, flags what looks wrong, and documents every approximation it makes. The figures below were counted directly on `2-Hospital_Dataset/inventory_data.csv` (500 rows, 2024-10-01 to 2026-02-12, one row per day).
 
-- `Item_ID`, `Item_Name`, `Item_Type` and `Vendor_ID` vary independently of each other, which is why an Item is defined as ID + name ([ADR 0001](docs/adr/0001-item-identity-is-id-plus-name.md)).
-- 37% of Snapshots (186 of 500) have stock above Max Capacity, and 13 have a minimum above the maximum. These are flagged, not corrected.
-- The vendor file lists one item per vendor, while the inventory shows every vendor supplying every product. Vendor data is therefore used only for names and the reference Contracted Lead Time ([ADR 0002](docs/adr/0002-dataset-scope.md)).
-- Each Item has only about 10 Snapshots over 500 days, so indicators use the carried-forward Item State ([ADR 0003](docs/adr/0003-as-of-item-state-and-indicator-approximations.md)).
-- If an Item has duplicate Snapshots on its latest date, its Category and Vendor are taken from the first of those rows in the file. The other copies are still loaded and flagged as duplicates. The current dataset has no duplicates.
+### What the data looks like
+
+| Observation | Figure in the dataset |
+|---|---|
+| Identifiers vary independently of each other | 10 distinct `Item_ID` values and 5 distinct `Item_Name` values (Gloves, IV Drip, Surgical Mask, Ventilator, X-ray Machine). Every one of the 10 IDs appears with more than one name, more than one `Item_Type` and more than one `Vendor_ID`; every one of the 5 names appears with more than one type and more than one vendor |
+| Items | 50 distinct (`Item_ID`, `Item_Name`) pairs, each with between 5 and 21 Snapshots (10 on average) |
+| `Unit_Cost` varies enormously, even for the same product | from 4.23 to 19984.16 |
+| Stock above Max Capacity | 186 of 500 Snapshots (37.2%) |
+| Minimum above Max Capacity | 13 Snapshots |
+| Stock below Min Required | 43 Snapshots |
+| Negative values, non-integer quantities, duplicate Snapshots | none |
+| The vendor file contradicts the inventory | `vendor_data.csv` has 3 vendors with one product each (V001 Surgical Mask, V002 Ventilator, V003 X-ray Machine), but the inventory shows each of V001, V002 and V003 supplying every product, and no vendor supplies Gloves or IV Drip in the vendor file |
+
+Because of this, Hosstock does not try to "repair" the data. Rows are never dropped or corrected.
+
+### Data Quality Flags
+
+Every Snapshot that looks inconsistent is loaded unchanged and flagged: stock above Max Capacity, minimum above maximum, negative value, non-integer quantity, and duplicate Snapshot (the table is in [The ETL](#the-etl)). If an Item has duplicate Snapshots on its latest date, its Category and Vendor are taken from the first of those rows in the file; the other copies are still loaded and flagged. The current dataset has no duplicates.
+
+### Datasets that are not used
+
+Only `inventory_data.csv` (the core) and `vendor_data.csv` (names and Contracted Lead Time only) are loaded ([ADR 0002](docs/adr/0002-dataset-scope.md)).
+
+| File | Why it is excluded |
+|---|---|
+| `financial_data.csv` | Its categories and descriptions contradict each other (for example, the first row is category "Staffing" with the description "Surgical masks"), so no reliable link to Items exists |
+| `patient_data.csv` | Clinical data, outside a logistics tool. It is also inconsistent (the second patient is discharged before being admitted) |
+| `staff_data.csv` | HR data, outside the purpose of the product |
+
+### Approximations (ADRs 0001 to 0003)
+
+- **Item = `Item_ID` + `Item_Name`**, which gives 50 Items, because the ID alone, the name alone or any other column does not identify a product consistently ([ADR 0001](docs/adr/0001-item-identity-is-id-plus-name.md)).
+- **Carried-forward Item State.** With about 10 Snapshots per Item over 500 days, an Item's state on any date is its latest Snapshot on or before that date, carried forward. Daily series and period averages are built from it ([ADR 0003](docs/adr/0003-as-of-item-state-and-indicator-approximations.md)).
+- **Stock Turnover is an approximation**: (mean `Avg_Usage_Per_Day` x 365) / mean daily stock over the period, because the dataset has no real issues or receipts.
+- **ABC Class by Stock Value** (current stock x unit cost), with cumulative thresholds of 80% and 95% that the Director can change.
+- **Replenishment Time** is the `Restock_Lead_Time` of the Snapshots (mean over the period). The vendor's **Contracted Lead Time** is shown for reference only and is never used in a calculation.
+
+### Methodological decisions made during implementation
+
+These are choices the brief left open. Each one is in the code (`apps/backend/src/indicators/`, `src/filters/`, `src/simulation/`, `src/reminders/`).
+
+- **ABC cumulative rule.** Items are ranked from highest to lowest Stock Value. An Item is A if the cumulative share of value up to and including it is at most 80%, B if at most 95%, otherwise C. Items with equal value share one class (that of the cumulative share at the end of the tie). The top-ranked Item (or tie group) is always A, so one dominant Item is not demoted to C. With a total value of 0 every Item is C.
+- **Replenishment Time in two places.** Stock Status, Urgency Level and Priority Score use the Replenishment Time of the Item State on the Reference Date ("now"). The period mean of Replenishment Time only feeds the per-Item analysis indicator and the portfolio aggregate.
+- **Stock Status order:** Below Minimum, then Reorder Needed (autonomy at most the Replenishment Time), then Excess, then Normal. An Item is Critical when below its minimum, or when autonomy is at most `urgency factor` x Replenishment Time and its ABC Class counts towards Critical (default A and B, urgency factor 0.5); it is Attention when autonomy is at most the Replenishment Time. Priority Score is the days short of the Replenishment Time x usage per day x unit cost.
+- **Estimated Demand** (next 30 days) is the mean `Avg_Usage_Per_Day` of the Item's last 3 Snapshots on or before the end of the period, times 30.
+- **Consumption trend** compares the mean `Avg_Usage_Per_Day` of the second half of the period with that of the first half, as a percentage.
+- **Filters classify on the whole portfolio first.** ABC Class, Stock Status and Urgency Level are computed on all Items and the filter is applied afterwards, so an Item keeps its ABC Class whatever the filter. Portfolio indicators are then aggregated over the filtered slice only.
+- **Threshold Overrides** replace the Min Required and/or Max Capacity of an Item in every calculation. They are kept across ETL runs.
+- **Reminders use real time; the Simulation moves only the Reference Date.** Alert Reminders are sent every `ALERT_REPEAT_HOURS` of real clock time, however fast the Simulation runs. The Simulation only advances the Reference Date, with a full recalculation at each step.
+- **Hosstock never places purchases.** Approving a Recommendation records the Director's decision; the purchase itself happens outside Hosstock.

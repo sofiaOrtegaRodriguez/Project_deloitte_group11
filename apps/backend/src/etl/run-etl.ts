@@ -11,6 +11,17 @@ import {
   type SnapshotRow,
 } from './dataset';
 
+/** What the recalculation that follows the load found (as of the Reference Date). */
+export interface RecalculationOutcome {
+  /** Null when there is no data. */
+  referenceDate: string | null;
+  critical: number;
+  attention: number;
+  openAlerts: number;
+  openDrafts: number;
+  staleDrafts: number;
+}
+
 export interface EtlSummary {
   items: number;
   itemsCreated: number;
@@ -24,6 +35,7 @@ export interface EtlSummary {
   negativeValue: number;
   nonIntegerQuantity: number;
   duplicateSnapshot: number;
+  recalculation: RecalculationOutcome;
 }
 
 function readSourceFile(datasetDir: string, file: string): string {
@@ -44,7 +56,8 @@ function readSourceFile(datasetDir: string, file: string): string {
  *   if anything fails, the previous data stays as it was.
  * - Items are upserted by their natural key (Item_ID, Item_Name), so their ids stay stable.
  *   Category and Vendor come from each Item's latest Snapshot.
- * - Application tables are never touched.
+ * - Application tables (Users, Alerts, Recommendations, Threshold Overrides, settings, logs, Notifications,
+ *   Simulation) are never touched. Items are never deleted, so nothing cascades from them.
  * - When the load is committed, the full recalculation runs (Item States -> indicators -> classification, plus
  *   the steps later tickets add).
  */
@@ -108,7 +121,13 @@ export async function runEtl(prisma: PrismaClient, datasetDir: string): Promise<
 
   // The data is now committed; recalculate everything that is derived from it. If this fails the load is
   // kept (the CLI reports the error) and can be recalculated by running the ETL again.
-  await runRecalculation(prisma);
+  const context = await runRecalculation(prisma);
+  const levels = context.indicators?.result?.items ?? [];
+  const [openAlerts, openDrafts, staleDrafts] = await Promise.all([
+    prisma.alert.count({ where: { status: { not: 'CLEARED' } } }),
+    prisma.recommendation.count({ where: { status: 'DRAFT' } }),
+    prisma.recommendation.count({ where: { status: 'DRAFT', staleSince: { not: null } } }),
+  ]);
 
   const items = await prisma.item.count();
   const dates = snapshots.map((row) => row.date.toISOString().slice(0, 10)).sort();
@@ -124,5 +143,13 @@ export async function runEtl(prisma: PrismaClient, datasetDir: string): Promise<
     negativeValue: snapshots.filter((row) => row.negativeValue).length,
     nonIntegerQuantity: snapshots.filter((row) => row.nonIntegerQuantity).length,
     duplicateSnapshot: snapshots.filter((row) => row.duplicateSnapshot).length,
+    recalculation: {
+      referenceDate: context.indicators?.referenceDate ?? null,
+      critical: levels.filter((i) => i.urgencyLevel === 'CRITICAL').length,
+      attention: levels.filter((i) => i.urgencyLevel === 'ATTENTION').length,
+      openAlerts,
+      openDrafts,
+      staleDrafts,
+    },
   };
 }

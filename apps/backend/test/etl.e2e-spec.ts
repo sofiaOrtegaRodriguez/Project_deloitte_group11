@@ -74,6 +74,7 @@ describe('ETL', () => {
       stockAboveMaxCapacity: 1,
       minAboveMax: 1,
       ...NO_EXTRA_FLAGS,
+      recalculation: expect.objectContaining({ referenceDate: '2025-01-05' }),
     });
     expect(await prisma.snapshot.count()).toBe(5);
     expect(await vendorContents()).toEqual([

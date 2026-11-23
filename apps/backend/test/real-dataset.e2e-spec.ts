@@ -35,6 +35,7 @@ describe('ETL on the real dataset', () => {
       negativeValue: 0,
       nonIntegerQuantity: 0,
       duplicateSnapshot: 0,
+      recalculation: expect.objectContaining({ referenceDate: '2026-02-12' }),
     });
     expect(await prisma.item.count()).toBe(50);
     expect(await prisma.snapshot.count()).toBe(500);
