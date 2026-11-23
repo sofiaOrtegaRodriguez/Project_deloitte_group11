@@ -4,11 +4,11 @@
 
 **Blocked by:** 06 (Global filters in the URL)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Export endpoints accept exactly the same parameters as the view they export; generated server-side
-- [ ] CSV of the current table
-- [ ] Excel via exceljs: a KPI sheet plus one sheet per table
-- [ ] Every export states its filters and Reference Date
-- [ ] Export buttons on the views
-- [ ] API tests: exports contain only the filtered data
+- [x] Export endpoints accept exactly the same parameters as the view they export; generated server-side
+- [x] CSV of the current table
+- [x] Excel via exceljs: a KPI sheet plus one sheet per table
+- [x] Every export states its filters and Reference Date
+- [x] Export buttons on the views
+- [x] API tests: exports contain only the filtered data

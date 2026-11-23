@@ -6,6 +6,7 @@ import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
 import { TopItems } from '@/components/dashboard/top-items';
 import { UrgencyCounts } from '@/components/dashboard/urgency-counts';
+import { ExportButtons } from '@/components/export-buttons';
 import { FilterBar } from '@/components/filter-bar';
 import { useDashboard } from '@/lib/dashboard';
 import { useFilters } from '@/lib/filters';
@@ -35,6 +36,7 @@ function Dashboard() {
         )}
       </div>
       <FilterBar />
+      <ExportButtons excel />
       {isPending && <p className="text-muted-foreground">Loading…</p>}
       {error && (
         <p role="alert" className="text-destructive">
