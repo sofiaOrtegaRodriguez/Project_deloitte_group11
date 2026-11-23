@@ -4,10 +4,10 @@
 
 **Blocked by:** 06 (Global filters in the URL)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] ABC donut by Stock Value; clicking a class drills down to Categories, then Items
-- [ ] Stock Value over time, consumption over time, Inventory Availability daily series
-- [ ] Previous-period series overlaid for comparison
-- [ ] Charts built with Recharts; data comes only from the backend
-- [ ] API tests for the series endpoints with filters
+- [x] ABC donut by Stock Value; clicking a class drills down to Categories, then Items
+- [x] Stock Value over time, consumption over time, Inventory Availability daily series
+- [x] Previous-period series overlaid for comparison
+- [x] Charts built with Recharts; data comes only from the backend
+- [x] API tests for the series endpoints with filters
