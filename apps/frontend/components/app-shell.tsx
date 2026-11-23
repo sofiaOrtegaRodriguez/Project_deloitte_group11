@@ -7,6 +7,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Wordmark } from '@/components/wordmark';
 import { ROLE_LABELS, useCurrentUser, useLogout } from '@/lib/auth';
+import { usePendingCount } from '@/lib/users';
 import { cn } from '@/lib/utils';
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
@@ -18,7 +19,7 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
 
 const SETTINGS = { href: '/settings', label: 'Settings', icon: Settings };
 
-function NavLink({ href, label, icon: Icon }: (typeof NAV)[number]) {
+function NavLink({ href, label, icon: Icon, badge }: (typeof NAV)[number] & { badge?: number }) {
   const pathname = usePathname();
   const active = href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
   return (
@@ -31,6 +32,14 @@ function NavLink({ href, label, icon: Icon }: (typeof NAV)[number]) {
     >
       <Icon className="size-4" aria-hidden />
       {label}
+      {badge ? (
+        <span
+          className="ml-auto rounded-full bg-destructive px-1.5 text-xs font-semibold text-white"
+          aria-label={`${badge} pending Access Requests`}
+        >
+          {badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -41,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { data: user, isPending, isError } = useCurrentUser();
   const logout = useLogout();
+  const pendingCount = usePendingCount();
 
   useEffect(() => {
     if (user === null) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
@@ -64,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink key={item.href} {...item} />
           ))}
           <div className="mt-auto">
-            <NavLink {...SETTINGS} />
+            <NavLink {...SETTINGS} badge={pendingCount} />
           </div>
         </nav>
       </aside>

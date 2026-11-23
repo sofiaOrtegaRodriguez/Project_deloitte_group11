@@ -4,13 +4,13 @@
 
 **Blocked by:** 02 (Director login and app shell)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Register page: name, unique email, password of at least 8 characters → Pending account
-- [ ] Correct password + Pending → "Your access request is pending approval"; correct password + Rejected → a rejection message; wrong password → generic message only
-- [ ] A Rejected email can register again
-- [ ] Settings → Users (Director only): list of Access Requests with Approve/Reject, and a pending-count badge
-- [ ] Approve sets the account Active with the Procurement Team role
-- [ ] User management endpoints return 403 to Procurement Team members, and the Users section is hidden for them
-- [ ] Access Requests produce no Notifications
-- [ ] API tests for every path above
+- [x] Register page: name, unique email, password of at least 8 characters → Pending account
+- [x] Correct password + Pending → "Your access request is pending approval"; correct password + Rejected → a rejection message; wrong password → generic message only
+- [x] A Rejected email can register again
+- [x] Settings → Users (Director only): list of Access Requests with Approve/Reject, and a pending-count badge
+- [x] Approve sets the account Active with the Procurement Team role
+- [x] User management endpoints return 403 to Procurement Team members, and the Users section is hidden for them
+- [x] Access Requests produce no Notifications
+- [x] API tests for every path above

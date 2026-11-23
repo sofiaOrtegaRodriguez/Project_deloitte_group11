@@ -18,6 +18,6 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Every page except Login, the /api proxy to the backend and Next's own static files.
-  matcher: ['/((?!login|api|_next/static|_next/image|favicon.ico).*)'],
+  // Every page except Login, Register, the /api proxy to the backend and Next's own static files.
+  matcher: ['/((?!login|register|api|_next/static|_next/image|favicon.ico).*)'],
 };
