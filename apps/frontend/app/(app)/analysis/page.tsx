@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
+import { LiveMonitor } from '@/components/analysis/live-monitor';
 import { CategorySummary } from '@/components/analysis/category-summary';
 import { Comparison } from '@/components/analysis/comparison';
 import { ConsumptionTrends } from '@/components/analysis/consumption-trends';
@@ -23,7 +24,7 @@ function Analysis() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Analysis</h1>
       <FilterBar />
-      {/* LIVE MONITOR (ticket 21): drop <LiveMonitor /> here, at the top of the page. */}
+      <LiveMonitor />
       <TrendCharts query={query} />
       <Comparison query={query} />
       <ConsumptionTrends query={query} filters={filters} />

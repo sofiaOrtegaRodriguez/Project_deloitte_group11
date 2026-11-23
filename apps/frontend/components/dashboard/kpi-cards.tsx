@@ -13,7 +13,7 @@ interface KpiDef {
   help: string;
 }
 
-const KPIS: KpiDef[] = [
+export const KPIS: KpiDef[] = [
   {
     key: 'stockValue',
     label: 'Stock Value',

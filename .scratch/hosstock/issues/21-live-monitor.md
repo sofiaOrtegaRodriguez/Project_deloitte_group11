@@ -4,8 +4,8 @@
 
 **Blocked by:** 15 (Submit, Approve and Reject), 19 (Simulation), 20 (Analysis page)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Refresh interval from env (default 30 s), implemented by polling
-- [ ] KPI tiles, event feed (Alerts and Recommendations), Simulation date and status
-- [ ] Events endpoint with API tests
+- [x] Refresh interval from env (default 30 s), implemented by polling
+- [x] KPI tiles, event feed (Alerts and Recommendations), Simulation date and status
+- [x] Events endpoint with API tests
