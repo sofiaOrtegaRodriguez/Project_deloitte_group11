@@ -4,14 +4,14 @@
 
 **Blocked by:** 12 (Notifications inbox), 14 (Purchase Planning and Drafts)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Draft → Pending Approval → Approved | Rejected
-- [ ] Submit stores a frozen Indicator Snapshot, shown when the Director decides
-- [ ] Approve and Reject are Director only (403 for the Procurement Team); Reject requires a comment
-- [ ] The submitter is notified of the decision
-- [ ] Submitting a Replenish Recommendation sets the Alert to Acknowledged; Approving sets it to Resolved; both recorded as "system, via Recommendation #N"
-- [ ] Dashboard widget with the 5 highest-priority Recommendations
-- [ ] History includes Submit and the decision
-- [ ] No purchase is placed or sent anywhere; Approved means "ready to process outside Hosstock"
-- [ ] API tests for transitions, permissions, the Indicator Snapshot and the Alert coupling
+- [x] Draft → Pending Approval → Approved | Rejected
+- [x] Submit stores a frozen Indicator Snapshot, shown when the Director decides
+- [x] Approve and Reject are Director only (403 for the Procurement Team); Reject requires a comment
+- [x] The submitter is notified of the decision
+- [x] Submitting a Replenish Recommendation sets the Alert to Acknowledged; Approving sets it to Resolved; both recorded as "system, via Recommendation #N"
+- [x] Dashboard widget with the 5 highest-priority Recommendations
+- [x] History includes Submit and the decision
+- [x] No purchase is placed or sent anywhere; Approved means "ready to process outside Hosstock"
+- [x] API tests for transitions, permissions, the Indicator Snapshot and the Alert coupling

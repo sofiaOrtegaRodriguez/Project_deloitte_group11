@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { AuthUser } from '../auth/auth-user';
 import type { RecommendationType } from './recommendation-logic';
@@ -45,6 +46,14 @@ export class DiscardDto {
   reason?: string;
 }
 
+export class RejectDto {
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MinLength(1, { message: 'Write a comment explaining the rejection' })
+  @MaxLength(2000)
+  comment!: string;
+}
+
 /** The Director and the Procurement Team may create, edit and Discard Recommendations; every logged-in User may read. */
 @Controller()
 export class RecommendationsController {
@@ -70,6 +79,13 @@ export class RecommendationsController {
   @Get('items/:id/recommendations')
   forItem(@Param('id', ParseIntPipe) id: number): Promise<RecommendationView[]> {
     return this.recommendations.list({ itemId: id });
+  }
+
+  /** The Pending Approval Recommendations with the highest Priority Score (Dashboard widget). Default 5, at most 50. */
+  @Get('recommendations/top-pending')
+  topPending(@Query('limit') limit?: string): Promise<RecommendationView[]> {
+    const n = limit !== undefined && /^\d+$/.test(limit) ? Math.min(Math.max(Number(limit), 1), 50) : 5;
+    return this.recommendations.topPending(n);
   }
 
   @Get('recommendations/:id')
@@ -110,5 +126,30 @@ export class RecommendationsController {
     @CurrentUser() user: AuthUser,
   ): Promise<RecommendationView> {
     return this.recommendations.discard(id, user.id, body?.reason);
+  }
+
+  @Roles('DIRECTOR', 'PROCUREMENT_TEAM')
+  @Post('recommendations/:id/submit')
+  @HttpCode(200)
+  submit(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser): Promise<RecommendationView> {
+    return this.recommendations.submit(id, user.id);
+  }
+
+  @Roles('DIRECTOR')
+  @Post('recommendations/:id/approve')
+  @HttpCode(200)
+  approve(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser): Promise<RecommendationView> {
+    return this.recommendations.approve(id, user.id);
+  }
+
+  @Roles('DIRECTOR')
+  @Post('recommendations/:id/reject')
+  @HttpCode(200)
+  reject(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: RejectDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<RecommendationView> {
+    return this.recommendations.reject(id, user.id, body.comment);
   }
 }

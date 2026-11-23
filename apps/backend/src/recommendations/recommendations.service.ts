@@ -1,6 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
+import { AlertsService } from '../alerts/alerts.module';
+import { CLOCK, type Clock } from '../clock/clock';
 import { computeFromDatabase } from '../indicators/load-indicators';
+import { notifyUser } from '../notifications/notifications';
 import { PrismaService } from '../prisma/prisma.service';
 import { createRecommendation, EMPTY_HISTORY, loadHistory } from './create-recommendation';
 import { diffFigures, type FigureChange } from './stale-drafts';
@@ -10,6 +13,8 @@ import { estimatedCost, type RecommendationFigures, type RecommendationType } fr
 const INCLUDE = {
   item: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true, status: true } },
+  submittedBy: { select: { id: true, name: true, status: true } },
+  decidedBy: { select: { id: true, name: true, status: true } },
   events: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], include: { user: { select: { id: true, name: true, status: true } } } },
 } satisfies Prisma.RecommendationInclude;
 
@@ -41,6 +46,16 @@ export interface RecommendationView {
   /** Null: created by the system (auto-Draft). */
   createdBy: PersonView | null;
   discardReason: string | null;
+  submittedBy: PersonView | null;
+  submittedAt: string | null;
+  decidedBy: PersonView | null;
+  decidedAt: string | null;
+  /** The Director's comment (mandatory on Reject). */
+  decisionComment: string | null;
+  /** When it was Approved: the start of Replenishment in Progress (ticket 17). */
+  approvedAt: string | null;
+  /** Frozen at Submit: the Item's indicators and the Draft's figures at that moment. Null before Submit. */
+  indicatorSnapshot: unknown;
   createdAt: string;
   updatedAt: string;
   history: {
@@ -79,6 +94,13 @@ function toView(row: RecommendationRow): RecommendationView {
         : [],
     createdBy: person(row.createdBy),
     discardReason: row.discardReason,
+    submittedBy: person(row.submittedBy),
+    submittedAt: row.submittedAt?.toISOString() ?? null,
+    decidedBy: person(row.decidedBy),
+    decidedAt: row.decidedAt?.toISOString() ?? null,
+    decisionComment: row.decisionComment,
+    approvedAt: row.approvedAt?.toISOString() ?? null,
+    indicatorSnapshot: row.indicatorSnapshot,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     history: row.events.map((e) => ({
@@ -97,7 +119,11 @@ function isOpenDraftConflict(error: unknown): boolean {
 
 @Injectable()
 export class RecommendationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alerts: AlertsService,
+    @Inject(CLOCK) private readonly clock: Clock,
+  ) {}
 
   async list(filter: { itemId?: number; status?: string[]; type?: RecommendationType } = {}): Promise<RecommendationView[]> {
     const rows = await this.prisma.recommendation.findMany({
@@ -108,6 +134,17 @@ export class RecommendationsService {
       },
       include: INCLUDE,
       orderBy: { id: 'desc' },
+    });
+    return rows.map(toView);
+  }
+
+  /** The Pending Approval Recommendations with the highest Priority Score, for the Dashboard widget. */
+  async topPending(limit: number): Promise<RecommendationView[]> {
+    const rows = await this.prisma.recommendation.findMany({
+      where: { status: 'PENDING_APPROVAL' },
+      include: INCLUDE,
+      orderBy: [{ priorityScore: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }],
+      take: limit,
     });
     return rows.map(toView);
   }
@@ -200,6 +237,98 @@ export class RecommendationsService {
   async updateToCurrent(id: number, userId: number): Promise<RecommendationView> {
     await updateToCurrent(this.prisma, id, userId);
     return this.get(id);
+  }
+
+  /**
+   * Draft -> Pending Approval. Freezes the Indicator Snapshot: the Item's current indicators plus the Draft's
+   * figures, quantity, cost and justification at this moment, so the Director decides on what was justified.
+   */
+  async submit(id: number, userId: number): Promise<RecommendationView> {
+    const draft = await this.requireDraft(id);
+    const computed = await computeFromDatabase(this.prisma);
+    const indicators = computed.result?.items.find((i) => i.itemId === draft.itemId) ?? null;
+    const now = this.clock.now();
+    const snapshot = {
+      takenAt: now.toISOString(),
+      referenceDate: computed.referenceDate,
+      quantity: draft.quantity.toNumber(),
+      estimatedCost: draft.estimatedCost.toNumber(),
+      justification: draft.justification,
+      figures: draft.figures,
+      indicators,
+    };
+    // The status check is part of the update, so a concurrent Discard or Submit cannot be overwritten.
+    const updated = await this.prisma.recommendation.updateMany({
+      where: { id, status: 'DRAFT' },
+      data: {
+        status: 'PENDING_APPROVAL',
+        submittedById: userId,
+        submittedAt: now,
+        indicatorSnapshot: snapshot as unknown as Prisma.InputJsonObject,
+      },
+    });
+    if (updated.count === 0) throw new ConflictException('Only Drafts can be submitted');
+    await this.prisma.recommendationEvent.create({ data: { recommendationId: id, type: 'SUBMITTED', userId } });
+    if (draft.type === 'REPLENISH') await this.coupleAlert(draft.itemId, 'ACKNOWLEDGED', id);
+    return this.get(id);
+  }
+
+  /** Pending Approval -> Approved (Director). The Item's open Alert becomes Resolved. Nothing is ordered from Hosstock. */
+  async approve(id: number, userId: number): Promise<RecommendationView> {
+    const row = await this.decide(id, userId, 'APPROVED', null);
+    if (row.type === 'REPLENISH') await this.coupleAlert(row.itemId, 'RESOLVED', id);
+    return this.get(id);
+  }
+
+  /** Pending Approval -> Rejected (Director), with a mandatory comment. */
+  async reject(id: number, userId: number, comment: string): Promise<RecommendationView> {
+    const clean = comment?.trim();
+    if (!clean) throw new BadRequestException('Write a comment explaining the rejection');
+    await this.decide(id, userId, 'REJECTED', clean);
+    return this.get(id);
+  }
+
+  private async decide(id: number, userId: number, status: 'APPROVED' | 'REJECTED', comment: string | null) {
+    const row = await this.prisma.recommendation.findUnique({ where: { id }, include: { item: { select: { name: true } } } });
+    if (!row) throw new NotFoundException(`Recommendation ${id} not found`);
+    if (row.status !== 'PENDING_APPROVAL') throw new ConflictException('Only Recommendations pending approval can be decided');
+    const now = this.clock.now();
+    // The status check is part of the update, so two concurrent decisions cannot both win.
+    const updated = await this.prisma.recommendation.updateMany({
+      where: { id, status: 'PENDING_APPROVAL' },
+      data: {
+        status,
+        decidedById: userId,
+        decidedAt: now,
+        decisionComment: comment,
+        approvedAt: status === 'APPROVED' ? now : null,
+      },
+    });
+    if (updated.count === 0) throw new ConflictException('Only Recommendations pending approval can be decided');
+    await this.prisma.recommendationEvent.create({
+      data: { recommendationId: id, type: status, userId, details: { comment } },
+    });
+    // Only the person who submitted it is notified.
+    if (row.submittedById !== null) {
+      const message =
+        status === 'APPROVED'
+          ? `Your recommendation for ${row.item.name} was approved: ready to process outside Hosstock`
+          : `Your recommendation for ${row.item.name} was rejected: ${comment}`;
+      await notifyUser(this.prisma, row.submittedById, {
+        type: 'RECOMMENDATION_DECISION',
+        message,
+        itemId: row.itemId,
+        recommendationId: id,
+      });
+    }
+    return row;
+  }
+
+  /** Replenish coupling: moves the Item's open Alert, if any, as "system, via Recommendation #N". */
+  private async coupleAlert(itemId: number, status: 'ACKNOWLEDGED' | 'RESOLVED', recommendationId: number) {
+    const alert = await this.prisma.alert.findFirst({ where: { itemId, status: { not: 'CLEARED' } } });
+    if (!alert || alert.status === status) return;
+    await this.alerts.changeStatusViaRecommendation(alert.id, status, recommendationId);
   }
 
   private async requireDraft(id: number) {
