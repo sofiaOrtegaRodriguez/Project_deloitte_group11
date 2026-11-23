@@ -4,9 +4,9 @@
 
 **Blocked by:** 11 (Alert lifecycle)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Per-User Notifications with read/unread state; mark as read
-- [ ] Alert created / escalated / reopened → Notifications
-- [ ] The frontend polls for new Notifications (no WebSockets); unread count on the bell
-- [ ] API tests: Notification generation and per-User read state
+- [x] Per-User Notifications with read/unread state; mark as read
+- [x] Alert created / escalated / reopened → Notifications
+- [x] The frontend polls for new Notifications (no WebSockets); unread count on the bell
+- [x] API tests: Notification generation and per-User read state
