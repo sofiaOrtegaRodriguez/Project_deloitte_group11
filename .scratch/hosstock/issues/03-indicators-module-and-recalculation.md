@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Monorepo scaffold and ETL loads the dataset), 02 (Director login and app shell)
 
-**Status:** in-review (e2e tests written but not yet run: no test database credentials were available)
+**Status:** done
 
 - [x] Reference Date global setting, defaulting to the dataset's last date
 - [x] Item State on day D = latest Snapshot on or before D, carried forward; Threshold Overrides (when present) take priority over the Snapshot's minimum and maximum

@@ -43,11 +43,22 @@ export class ItemsService {
     const from = query.from;
     const to = query.to;
     for (const date of [from, to]) {
-      if (date && Number.isNaN(Date.parse(`${date}T00:00:00Z`))) throw new BadRequestException(`Invalid date: ${date}`);
+      // Date.parse rolls impossible days over (2025-02-30 becomes 2 March), so check the round trip.
+      if (date && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) {
+        throw new BadRequestException(`Invalid date: ${date}`);
+      }
     }
     if (from && to && dayNumber(from) > dayNumber(to)) throw new BadRequestException('from must not be after to');
 
-    const { referenceDate, config, result } = await computeFromDatabase(this.prisma, { from, to });
+    let computed: Awaited<ReturnType<typeof computeFromDatabase>>;
+    try {
+      computed = await computeFromDatabase(this.prisma, { from, to });
+    } catch (error) {
+      // A period that starts after the Reference Date (the default end) is the caller's mistake.
+      if (error instanceof Error && error.message.startsWith('Invalid period')) throw new BadRequestException(error.message);
+      throw error;
+    }
+    const { referenceDate, config, result } = computed;
     if (!result) return { referenceDate, period: null, config, portfolio: null, items: [] };
     const items = await this.prisma.item.findMany({ orderBy: { id: 'asc' } });
     const byId = new Map(result.items.map((r) => [r.itemId, r]));

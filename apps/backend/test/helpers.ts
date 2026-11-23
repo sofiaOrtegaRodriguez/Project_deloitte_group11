@@ -31,7 +31,11 @@ export function hashFolder(dir: string): Record<string, string> {
 /** Copies a fixture folder to a temporary folder so a test can modify it. */
 export function copyFixture(source: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hosstock-fixture-'));
-  for (const name of fs.readdirSync(source)) fs.copyFileSync(path.join(source, name), path.join(dir, name));
+  for (const name of fs.readdirSync(source)) {
+    // Git on Windows checks files out with CRLF. Normalise to LF so tests can append or edit lines freely.
+    const text = fs.readFileSync(path.join(source, name), 'utf8').replaceAll('\r\n', '\n');
+    fs.writeFileSync(path.join(dir, name), text);
+  }
   return dir;
 }
 
