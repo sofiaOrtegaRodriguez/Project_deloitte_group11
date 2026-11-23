@@ -1,5 +1,6 @@
 // THE ordered list of recalculation steps. To add a step, create it in its own file and add one line here.
 // Order matters: a step may read what earlier steps put in the context.
+import { alertsStep } from '../alerts/alerts.step';
 import { computeFromDatabase } from '../indicators/load-indicators';
 import type { RecalculationStep } from './recalculation';
 
@@ -13,5 +14,6 @@ export const indicatorsStep: RecalculationStep = {
 
 export const recalculationSteps: readonly RecalculationStep[] = [
   indicatorsStep,
+  alertsStep,
   // Later tickets: Alert synchronisation, auto-Draft synchronisation, Stale Draft detection.
 ];
