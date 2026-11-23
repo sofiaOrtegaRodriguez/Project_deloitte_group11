@@ -18,6 +18,9 @@ async function main(): Promise<void> {
     console.log('  Data Quality Flags:');
     console.log(`    stock above Max Capacity: ${s.stockAboveMaxCapacity}`);
     console.log(`    minimum above maximum:    ${s.minAboveMax}`);
+    console.log(`    negative value:           ${s.negativeValue}`);
+    console.log(`    non-integer quantity:     ${s.nonIntegerQuantity}`);
+    console.log(`    duplicate Snapshot:       ${s.duplicateSnapshot}`);
   } finally {
     await prisma.$disconnect();
   }

@@ -93,6 +93,9 @@ npm run etl
     Data Quality Flags:
       stock above Max Capacity: 186
       minimum above maximum:    13
+      negative value:           0
+      non-integer quantity:     0
+      duplicate Snapshot:       0
   ```
 
 You can run `npm run etl` again at any time to rebuild the data. See [The ETL](#the-etl) below.
@@ -139,10 +142,19 @@ The browser only talks to the frontend (port 3000), which forwards every `/api/.
 `npm run etl` is the only way data enters Hosstock.
 
 - It **only reads** the CSV files and never modifies them.
-- It validates both files before writing anything. If a column is missing or a value is invalid, it stops with the line and column and leaves the database unchanged.
 - It loads `inventory_data.csv` (every row becomes a Snapshot) and, from `vendor_data.csv`, only the vendor name and Contracted Lead Time ([ADR 0002](docs/adr/0002-dataset-scope.md)). `financial_data.csv`, `patient_data.csv` and `staff_data.csv` are not used.
 - An **Item** is the pair `Item_ID` + `Item_Name` ([ADR 0001](docs/adr/0001-item-identity-is-id-plus-name.md)), which gives 50 Items. Its Category and Vendor come from its latest Snapshot.
-- Rows are never dropped or corrected. Inconsistent rows get a **Data Quality Flag** instead: stock above Max Capacity, or minimum above maximum.
+- Rows are never dropped or corrected, and numbers are stored with every digit, without rounding. Inconsistent rows are loaded as they are and get a **Data Quality Flag**:
+
+  | Flag | When |
+  |---|---|
+  | stock above Max Capacity | `Current_Stock` > `Max_Capacity` |
+  | minimum above maximum | `Min_Required` > `Max_Capacity` |
+  | negative value | any stock, threshold, cost, usage or lead-time value is below zero |
+  | non-integer quantity | stock, a threshold or `Restock_Lead_Time` has decimals |
+  | duplicate Snapshot | the file has more than one row for the same Item and date (every copy is flagged) |
+
+- The ETL only stops when a value can't be stored at all: a missing column, an empty field, text where a number or a date is expected, or an `Item_ID` that isn't a whole number. It then reports the line and column and leaves the database unchanged. Both files are checked before anything is written.
 - Running it again fully replaces the source data (Snapshots, Vendors) inside a single transaction. Items keep their internal ids, so the work stored about them is preserved.
 
 ---

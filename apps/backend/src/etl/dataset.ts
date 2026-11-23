@@ -31,15 +31,20 @@ export interface SnapshotRow {
   itemName: string;
   category: string;
   vendorCode: string;
-  currentStock: number;
-  minRequired: number;
-  maxCapacity: number;
-  /** Decimal kept as text so no precision is lost on the way to the database. */
+  // Numbers are kept as the exact text of the CSV so no digit is lost on the way to the database.
+  currentStock: string;
+  minRequired: string;
+  maxCapacity: string;
   unitCost: string;
   avgUsagePerDay: string;
-  restockLeadTime: number;
+  /** Replenishment Time in days, from the `Restock_Lead_Time` column. */
+  replenishmentTimeDays: string;
+  // Data Quality Flags.
   stockAboveMaxCapacity: boolean;
   minAboveMax: boolean;
+  negativeValue: boolean;
+  nonIntegerQuantity: boolean;
+  duplicateSnapshot: boolean;
 }
 
 export interface VendorRow {
@@ -82,6 +87,43 @@ function readRecords(text: string, file: string, required: readonly string[]): R
   return records;
 }
 
+const DECIMAL = /^-?\d+(\.\d+)?$/;
+
+/** A decimal written as text, split so it can be compared exactly (no floating-point rounding). */
+interface DecimalParts {
+  negative: boolean;
+  /** Integer digits without leading zeros. */
+  whole: string;
+  /** Fraction digits without trailing zeros. */
+  fraction: string;
+}
+
+function decimalParts(value: string): DecimalParts {
+  const [whole, fraction = ''] = value.replace(/^-/, '').split('.');
+  const parts = { whole: whole.replace(/^0+/, ''), fraction: fraction.replace(/0+$/, '') };
+  const isZero = parts.whole === '' && parts.fraction === '';
+  return { negative: value.startsWith('-') && !isZero, ...parts };
+}
+
+/** Exact comparison of two decimals written as text: negative, zero or positive like `a - b`. */
+export function compareDecimals(a: string, b: string): number {
+  const x = decimalParts(a);
+  const y = decimalParts(b);
+  if (x.negative !== y.negative) return x.negative ? -1 : 1;
+  // Digit strings of equal length compare correctly as plain strings.
+  const compareDigits = (p: string, q: string) => (p < q ? -1 : p > q ? 1 : 0);
+  let magnitude = x.whole.length - y.whole.length;
+  if (magnitude === 0) magnitude = compareDigits(x.whole, y.whole);
+  if (magnitude === 0) {
+    const length = Math.max(x.fraction.length, y.fraction.length);
+    magnitude = compareDigits(x.fraction.padEnd(length, '0'), y.fraction.padEnd(length, '0'));
+  }
+  return x.negative ? -Math.sign(magnitude) : Math.sign(magnitude);
+}
+
+const isNegative = (value: string) => decimalParts(value).negative;
+const isWholeNumber = (value: string) => decimalParts(value).fraction === '';
+
 class RowReader {
   constructor(
     private readonly record: RawRecord,
@@ -99,19 +141,21 @@ class RowReader {
     return value;
   }
 
+  /** For identifiers and vendor reference data, which are stored as whole numbers. */
   int(column: string): number {
     const value = this.record[column] ?? '';
-    if (!/^\d+$/.test(value)) {
-      this.fail(column, 'a non-negative whole number');
+    if (!/^-?\d+$/.test(value)) {
+      this.fail(column, 'a whole number');
       return 0;
     }
     return Number(value);
   }
 
+  /** Any plain decimal number, returned as its exact text. Negative and non-integer values are allowed. */
   decimal(column: string): string {
     const value = this.record[column] ?? '';
-    if (!/^\d+(\.\d+)?$/.test(value)) {
-      this.fail(column, 'a non-negative number');
+    if (!DECIMAL.test(value)) {
+      this.fail(column, 'a number');
       return '0';
     }
     return value;
@@ -128,10 +172,16 @@ class RowReader {
   }
 }
 
+/**
+ * Parses the inventory CSV. Every row is kept with its values exactly as written: inconsistent values
+ * (negative, non-integer quantities, duplicates, stock above capacity, minimum above maximum) are
+ * flagged, never rejected or corrected. Only values that cannot be stored at all are rejected:
+ * a missing column, an empty field, text where a number or date is expected, or an Item_ID that is
+ * not a whole number (it identifies the Item, ADR 0001).
+ */
 export function parseInventoryCsv(text: string, file = INVENTORY_FILE): SnapshotRow[] {
   const records = readRecords(text, file, INVENTORY_COLUMNS);
   const problems: string[] = [];
-  const seen = new Map<string, number>();
 
   const rows = records.map((record, index) => {
     const r = new RowReader(record, index + 2, problems);
@@ -142,27 +192,35 @@ export function parseInventoryCsv(text: string, file = INVENTORY_FILE): Snapshot
       itemName: r.text('Item_Name'),
       category: r.text('Item_Type'),
       vendorCode: r.text('Vendor_ID'),
-      currentStock: r.int('Current_Stock'),
-      minRequired: r.int('Min_Required'),
-      maxCapacity: r.int('Max_Capacity'),
+      currentStock: r.decimal('Current_Stock'),
+      minRequired: r.decimal('Min_Required'),
+      maxCapacity: r.decimal('Max_Capacity'),
       unitCost: r.decimal('Unit_Cost'),
       avgUsagePerDay: r.decimal('Avg_Usage_Per_Day'),
-      restockLeadTime: r.int('Restock_Lead_Time'),
+      replenishmentTimeDays: r.decimal('Restock_Lead_Time'),
       stockAboveMaxCapacity: false,
       minAboveMax: false,
+      negativeValue: false,
+      nonIntegerQuantity: false,
+      duplicateSnapshot: false,
     };
-    row.stockAboveMaxCapacity = row.currentStock > row.maxCapacity;
-    row.minAboveMax = row.minRequired > row.maxCapacity;
-
-    const key = `${itemKey(row.sourceItemId, row.itemName)}|${record.Date}`;
-    const firstLine = seen.get(key);
-    if (firstLine !== undefined) {
-      problems.push(`line ${r.line}: duplicate Snapshot for the same Item and date as line ${firstLine}`);
-    } else {
-      seen.set(key, r.line);
-    }
+    const quantities = [row.currentStock, row.minRequired, row.maxCapacity, row.replenishmentTimeDays];
+    row.stockAboveMaxCapacity = compareDecimals(row.currentStock, row.maxCapacity) > 0;
+    row.minAboveMax = compareDecimals(row.minRequired, row.maxCapacity) > 0;
+    row.negativeValue = [...quantities, row.unitCost, row.avgUsagePerDay].some(isNegative);
+    // Cost and average usage are naturally decimal; stock, thresholds and lead time are counts of units or days.
+    row.nonIntegerQuantity = !quantities.every(isWholeNumber);
     return row;
   });
+
+  const rowsBySnapshotKey = new Map<string, SnapshotRow[]>();
+  for (const row of rows) {
+    const key = `${itemKey(row.sourceItemId, row.itemName)}|${row.date.toISOString()}`;
+    rowsBySnapshotKey.set(key, [...(rowsBySnapshotKey.get(key) ?? []), row]);
+  }
+  for (const group of rowsBySnapshotKey.values()) {
+    if (group.length > 1) for (const row of group) row.duplicateSnapshot = true;
+  }
 
   if (rows.length === 0) problems.push('the file has no data rows');
   if (problems.length > 0) throw new DatasetValidationError(file, problems);

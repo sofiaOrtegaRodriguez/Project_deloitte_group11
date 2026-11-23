@@ -32,6 +32,9 @@ describe('ETL on the real dataset', () => {
       lastDate: '2026-02-12',
       stockAboveMaxCapacity: 186,
       minAboveMax: 13,
+      negativeValue: 0,
+      nonIntegerQuantity: 0,
+      duplicateSnapshot: 0,
     });
     expect(await prisma.item.count()).toBe(50);
     expect(await prisma.snapshot.count()).toBe(500);

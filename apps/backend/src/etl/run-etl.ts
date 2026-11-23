@@ -17,8 +17,12 @@ export interface EtlSummary {
   vendors: number;
   firstDate: string;
   lastDate: string;
+  // Number of Snapshots with each Data Quality Flag.
   stockAboveMaxCapacity: number;
   minAboveMax: number;
+  negativeValue: number;
+  nonIntegerQuantity: number;
+  duplicateSnapshot: number;
 }
 
 function readSourceFile(datasetDir: string, file: string): string {
@@ -33,7 +37,8 @@ function readSourceFile(datasetDir: string, file: string): string {
 /**
  * Loads the inventory and vendor CSVs from `datasetDir` into the database.
  *
- * - Both files are parsed and validated before anything is written.
+ * - Both files are parsed and validated before anything is written. Every row is loaded unchanged;
+ *   inconsistent values get Data Quality Flags instead of being rejected or corrected.
  * - Source tables (Snapshots, Vendors) are fully replaced inside one transaction:
  *   if anything fails, the previous data stays as it was.
  * - Items are upserted by their natural key (Item_ID, Item_Name), so their ids stay stable.
@@ -86,9 +91,12 @@ export async function runEtl(prisma: PrismaClient, datasetDir: string): Promise<
           maxCapacity: row.maxCapacity,
           unitCost: row.unitCost,
           avgUsagePerDay: row.avgUsagePerDay,
-          restockLeadTime: row.restockLeadTime,
+          replenishmentTimeDays: row.replenishmentTimeDays,
           stockAboveMaxCapacity: row.stockAboveMaxCapacity,
           minAboveMax: row.minAboveMax,
+          negativeValue: row.negativeValue,
+          nonIntegerQuantity: row.nonIntegerQuantity,
+          duplicateSnapshot: row.duplicateSnapshot,
         })),
       });
     },
@@ -106,5 +114,8 @@ export async function runEtl(prisma: PrismaClient, datasetDir: string): Promise<
     lastDate: dates[dates.length - 1],
     stockAboveMaxCapacity: snapshots.filter((row) => row.stockAboveMaxCapacity).length,
     minAboveMax: snapshots.filter((row) => row.minAboveMax).length,
+    negativeValue: snapshots.filter((row) => row.negativeValue).length,
+    nonIntegerQuantity: snapshots.filter((row) => row.nonIntegerQuantity).length,
+    duplicateSnapshot: snapshots.filter((row) => row.duplicateSnapshot).length,
   };
 }
