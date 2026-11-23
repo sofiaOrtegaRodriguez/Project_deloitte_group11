@@ -12,6 +12,9 @@ const transform = { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/test/tsconfi
 
 /** @type {import('jest').Config} */
 module.exports = {
+  // Jest only honours testTimeout at the top level, not inside a project: without this the API suites
+  // fall back to 5 s per test and per hook, which is too short for the ETL and for bcrypt logins.
+  testTimeout: 30_000,
   projects: [
     {
       displayName: 'unit',
