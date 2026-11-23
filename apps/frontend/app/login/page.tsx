@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,12 @@ function LoginForm() {
       <Button type="submit" className="w-full" disabled={login.isPending}>
         {login.isPending ? 'Logging in…' : 'Log in'}
       </Button>
+      <p className="text-center text-sm text-muted-foreground">
+        No account yet?{' '}
+        <Link href="/register" className="font-medium text-foreground underline">
+          Request access
+        </Link>
+      </p>
     </form>
   );
 }

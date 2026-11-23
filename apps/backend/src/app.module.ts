@@ -5,9 +5,10 @@ import { HealthController } from './health/health.controller';
 import { ItemsModule } from './items/items.module';
 import { PrismaModule } from './prisma/prisma.service';
 import { DirectorSeed } from './users/director-seed';
+import { UsersModule } from './users/users.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, ItemsModule],
+  imports: [PrismaModule, AuthModule, ItemsModule, UsersModule],
   controllers: [HealthController],
   // ExampleSecretsCheck runs on module init, before DirectorSeed (application bootstrap).
   providers: [ExampleSecretsCheck, DirectorSeed],
