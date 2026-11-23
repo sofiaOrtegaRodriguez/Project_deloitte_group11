@@ -29,6 +29,7 @@ model Item {
   vendorCode        String             @map("vendor_code")
   snapshots         Snapshot[]
   thresholdOverride ThresholdOverride?
+  alerts             Alert[]
 
   @@unique([sourceItemId, name])
   @@map("items")
@@ -144,6 +145,8 @@ model User {
   configurationLogs ConfigurationLog[]
 
   /// There is exactly one Director.
+  alertEvents  AlertEvent[]
+
   @@unique([role], map: "users_single_director", where: raw("role = 'DIRECTOR'"))
   /// An email belongs to at most one User that is not Rejected.
   @@unique([email], map: "users_email_not_rejected", where: raw("status <> 'REJECTED'"))
@@ -159,4 +162,76 @@ model Vendor {
   contractedLeadTimeDays Int    @map("contracted_lead_time_days")
 
   @@map("vendors")
+}
+
+/// How urgent an Alert is. Mirrors the Critical and Attention Urgency Levels.
+enum AlertLevel {
+  CRITICAL
+  ATTENTION
+}
+
+/// Where an Alert is in its lifecycle (see GLOSSARY.md). Only CLEARED is closed (ADR 0004).
+enum AlertStatus {
+  NEW
+  VIEWED
+  ACKNOWLEDGED
+  IGNORED
+  RESOLVED
+  CLEARED
+}
+
+enum AlertEventType {
+  CREATED
+  ESCALATED
+  LEVEL_LOWERED
+  STATUS_CHANGED
+  REOPENED
+  CLEARED
+  COMMENTED
+}
+
+/// A team-wide notice that an Item is Critical or Attention. An Item has at most one open Alert
+/// (any status except CLEARED), enforced by a partial unique index. Application table, never touched by the ETL.
+model Alert {
+  id            Int         @id @default(autoincrement())
+  itemId        Int         @map("item_id")
+  item          Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  level         AlertLevel
+  status        AlertStatus @default(NEW)
+  /// Priority Score of the Item at the last recalculation, for ordering.
+  priorityScore Float?      @map("priority_score")
+  /// Reminders sent for this Alert (ticket 13).
+  reminderCount Int         @default(0) @map("reminder_count")
+  /// Why the Alert last Reopened, e.g. "expected delivery overdue" (ticket 17).
+  reason        String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at")
+  events        AlertEvent[]
+
+  /// One open Alert per Item.
+  @@unique([itemId], map: "alerts_one_open_per_item", where: raw("status <> CLEARED"))
+  @@index([itemId])
+  @@map("alerts")
+}
+
+/// Every transition and comment of an Alert. A null user means "system".
+model AlertEvent {
+  id         Int            @id @default(autoincrement())
+  alertId    Int            @map("alert_id")
+  alert      Alert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  type       AlertEventType
+  fromStatus AlertStatus?   @map("from_status")
+  toStatus   AlertStatus?   @map("to_status")
+  fromLevel  AlertLevel?    @map("from_level")
+  toLevel    AlertLevel?    @map("to_level")
+  userId     Int?           @map("user_id")
+  user       User?          @relation(fields: [userId], references: [id])
+  /// Comment text, for COMMENTED events.
+  comment    String?
+  /// Extra context, e.g. "via Recommendation #12" or "expected delivery overdue".
+  note       String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([alertId, createdAt])
+  @@map("alert_events")
 }

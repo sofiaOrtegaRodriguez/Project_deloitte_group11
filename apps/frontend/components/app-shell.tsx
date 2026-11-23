@@ -4,6 +4,7 @@ import { BarChart3, Boxes, LayoutDashboard, LogOut, Settings, ShoppingCart, type
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
+import { AlertsBell } from '@/components/alerts/alerts-bell';
 import { Button } from '@/components/ui/button';
 import { Wordmark } from '@/components/wordmark';
 import { ROLE_LABELS, useCurrentUser, useLogout } from '@/lib/auth';
@@ -81,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 items-center justify-end gap-3 border-b px-5">
+          <AlertsBell />
           <div className="text-right leading-tight">
             <div className="font-medium">{user.name}</div>
             <div className="text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</div>

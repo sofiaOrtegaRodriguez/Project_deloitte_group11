@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertsWidget } from '@/components/alerts/alerts-widget';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
 import { TopItems } from '@/components/dashboard/top-items';
 import { UrgencyCounts } from '@/components/dashboard/urgency-counts';
@@ -33,9 +34,10 @@ export default function DashboardPage() {
             <KpiCards data={data} />
             <UrgencyCounts counts={data.urgencyCounts} />
             <TopItems items={data.topItems} />
-            {/* Space for later widgets: charts (ticket 07), Alerts (11), Recommendations. Add each as its own component. */}
+            {/* Space for later widgets: charts (ticket 07), Recommendations (15). Add each as its own component. */}
           </>
         ))}
+      <AlertsWidget />
     </div>
   );
 }
