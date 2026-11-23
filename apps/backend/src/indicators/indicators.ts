@@ -4,6 +4,7 @@
 import type {
   AbcClass,
   AvailabilityPoint,
+  DailyIndicatorPoint,
   IndicatorConfig,
   IndicatorsResult,
   ItemIndicators,
@@ -271,7 +272,27 @@ export function computeIndicators(
     portfolio: portfolioOf(keep ? withState.filter((r) => keep(r)) : withState),
     availabilitySeries: availabilitySeries(kept ? series.filter((_, i) => kept[i]) : series, startDay, length),
     valueSeries: valueSeries(kept ? series.filter((_, i) => kept[i]) : series, startDay, length),
+    dailySeries: dailySeries(kept ? series.filter((_, i) => kept[i]) : series, startDay, length),
   };
+}
+
+function dailySeries(series: (ItemState | null)[][], startDay: number, length: number): DailyIndicatorPoint[] {
+  const points: DailyIndicatorPoint[] = [];
+  for (let d = 0; d < length; d++) {
+    const states = series.map((s) => s[d]).filter((s): s is ItemState => s !== null);
+    const stockValue = states.reduce((sum, s) => sum + s.currentStock * s.unitCost, 0);
+    const consumption = states.reduce((sum, s) => sum + s.avgUsagePerDay * s.unitCost, 0);
+    points.push({
+      date: isoDay(startDay + d),
+      stockValue,
+      excessStockValue: states.reduce((sum, s) => sum + Math.max(0, s.currentStock - s.maxCapacity) * s.unitCost, 0),
+      belowMinimumCount: states.filter((s) => s.currentStock < s.minRequired).length,
+      medianAutonomyDays: median(states.filter((s) => s.avgUsagePerDay > 0).map((s) => s.currentStock / s.avgUsagePerDay)),
+      stockTurnover: stockValue > 0 ? (consumption * DAYS_PER_YEAR) / stockValue : null,
+      replenishmentTimeDays: mean(states.map((s) => s.replenishmentTimeDays)),
+    });
+  }
+  return points;
 }
 
 function availabilitySeries(series: (ItemState | null)[][], startDay: number, length: number): AvailabilityPoint[] {
@@ -304,7 +325,7 @@ function valueSeries(series: (ItemState | null)[][], startDay: number, length: n
   return points;
 }
 
-function portfolioOf(withState: ItemIndicators[]): PortfolioIndicators {
+export function portfolioOf(withState: ItemIndicators[]): PortfolioIndicators {
   const sumMeanStockValue = withState.reduce((sum, r) => sum + r.meanStockValue!, 0);
   const sumConsumption = withState.reduce((sum, r) => sum + r.annualConsumptionValue!, 0);
   const portfolio: PortfolioIndicators = {

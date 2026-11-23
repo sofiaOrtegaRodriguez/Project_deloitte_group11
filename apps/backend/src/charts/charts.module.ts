@@ -73,7 +73,7 @@ export interface SeriesResponse {
   previous: SeriesPoint[];
 }
 
-function pointsOf(result: IndicatorsResult): SeriesPoint[] {
+export function pointsOf(result: IndicatorsResult): SeriesPoint[] {
   return result.valueSeries.map((v, offset) => ({
     offset,
     date: v.date,
@@ -87,7 +87,8 @@ function pointsOf(result: IndicatorsResult): SeriesPoint[] {
 export class ChartsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async compute(query: FilterQuery) {
+  /** Current and previous indicators of the slice. Also used by the Analysis module (ticket 20). */
+  async compute(query: FilterQuery) {
     const { from, to, filters } = parseFilters(query);
     const inputs = await loadIndicatorInputs(this.prisma);
     const period = resolvePeriod(inputs, from, to);
@@ -189,5 +190,5 @@ export class ChartsController {
   }
 }
 
-@Module({ controllers: [ChartsController], providers: [ChartsService] })
+@Module({ controllers: [ChartsController], providers: [ChartsService], exports: [ChartsService] })
 export class ChartsModule {}

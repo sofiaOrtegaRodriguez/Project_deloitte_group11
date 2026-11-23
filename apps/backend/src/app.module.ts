@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AlertsModule } from './alerts/alerts.module';
+import { AnalysisModule } from './analysis/analysis.module';
 import { AuthModule } from './auth/auth.module';
 import { ChartsModule } from './charts/charts.module';
 import { ClockModule } from './clock/clock';
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     AlertsModule,
     DashboardModule,
     ChartsModule,
+    AnalysisModule,
     FiltersModule,
     UsersModule,
     SettingsModule,
