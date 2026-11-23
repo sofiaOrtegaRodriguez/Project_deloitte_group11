@@ -195,6 +195,15 @@ enum AlertEventType {
   REOPENED
   CLEARED
   COMMENTED
+  REMINDER
+}
+
+/// One row: when the last Reminder round ran (real clock time), so restarts neither reset nor repeat it.
+model ReminderState {
+  id          Int      @id @default(1)
+  lastRoundAt DateTime @map("last_round_at")
+
+  @@map("reminder_state")
 }
 
 /// A team-wide notice that an Item is Critical or Attention. An Item has at most one open Alert

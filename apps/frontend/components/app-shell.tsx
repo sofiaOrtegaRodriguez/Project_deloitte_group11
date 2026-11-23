@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { AlertsBell } from '@/components/alerts/alerts-bell';
+import { ReminderToasts } from '@/components/reminder-toasts';
 import { SimulationBanner } from '@/components/simulation-banner';
 import { Button } from '@/components/ui/button';
 import { Wordmark } from '@/components/wordmark';
@@ -96,6 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main className="flex-1 bg-muted/50 p-5">{children}</main>
       </div>
+      <ReminderToasts />
     </div>
   );
 }
