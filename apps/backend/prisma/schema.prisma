@@ -333,3 +333,28 @@ model UserManagementLogEntry {
   @@index([createdAt])
   @@map("user_management_log")
 }
+
+enum SimulationStatus {
+  STOPPED
+  RUNNING
+  PAUSED
+  /// Reached the end of the data; stays on the last date until the Director stops it.
+  FINISHED
+}
+
+/// The single, global Simulation (spec "Simulation"). Row id 1; absent means STOPPED.
+/// Application table, never touched by the ETL.
+model SimulationState {
+  id                    Int              @id @default(1)
+  status                SimulationStatus @default(STOPPED)
+  startDate             DateTime?        @map("start_date") @db.Date
+  /// The simulated date: the Reference Date while the Simulation is not STOPPED.
+  currentDate           DateTime?        @map("current_date") @db.Date
+  secondsPerDay         Int              @default(10) @map("seconds_per_day")
+  /// The Reference Date setting before the Simulation started (null = follow the dataset), restored on stop.
+  previousReferenceDate DateTime?        @map("previous_reference_date") @db.Date
+  /// Clock time of the last step (or of start/resume); the next step is due secondsPerDay later.
+  lastStepAt            DateTime?        @map("last_step_at")
+
+  @@map("simulation_state")
+}

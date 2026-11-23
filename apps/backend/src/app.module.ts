@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
+import { ClockModule } from './clock/clock';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ExampleSecretsCheck } from './config/example-secrets';
 import { HealthController } from './health/health.controller';
@@ -9,18 +10,21 @@ import { PlanningModule } from './planning/planning.module';
 import { PrismaModule } from './prisma/prisma.service';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { SettingsModule } from './settings/settings';
+import { SimulationModule } from './simulation/simulation';
 import { DirectorSeed } from './users/director-seed';
 import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     PrismaModule,
+    ClockModule,
     AuthModule,
     ItemsModule,
     AlertsModule,
     DashboardModule,
     UsersModule,
     SettingsModule,
+    SimulationModule,
     PlanningModule,
     RecommendationsModule,
   ],

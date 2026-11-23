@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { AlertsBell } from '@/components/alerts/alerts-bell';
+import { SimulationBanner } from '@/components/simulation-banner';
 import { Button } from '@/components/ui/button';
 import { Wordmark } from '@/components/wordmark';
 import { ROLE_LABELS, useCurrentUser, useLogout } from '@/lib/auth';
@@ -81,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <SimulationBanner />
         <header className="flex h-12 items-center justify-end gap-3 border-b px-5">
           <AlertsBell />
           <div className="text-right leading-tight">
