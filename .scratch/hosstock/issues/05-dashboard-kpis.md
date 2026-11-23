@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 (Indicators module and recalculation)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Dashboard endpoint returns current-period and comparison-period KPIs
-- [ ] 7 KPI cards, each with a delta vs the previous period and a tooltip (formula + median / value-weighted / mean)
-- [ ] Item counts per Urgency Level (Critical, Attention, Normal)
-- [ ] Top-10 Priority Score ranking
-- [ ] API tests for KPI values and the period comparison on the fixture data
+- [x] Dashboard endpoint returns current-period and comparison-period KPIs
+- [x] 7 KPI cards, each with a delta vs the previous period and a tooltip (formula + median / value-weighted / mean)
+- [x] Item counts per Urgency Level (Critical, Attention, Normal)
+- [x] Top-10 Priority Score ranking
+- [x] API tests for KPI values and the period comparison on the fixture data
