@@ -273,5 +273,5 @@ export class SimulationController {
   }
 }
 
-@Module({ controllers: [SimulationController], providers: [SimulationService, SimulationScheduler] })
+@Module({ controllers: [SimulationController], providers: [SimulationService, SimulationScheduler], exports: [SimulationService] })
 export class SimulationModule {}

@@ -152,5 +152,5 @@ export class DashboardController {
   }
 }
 
-@Module({ controllers: [DashboardController], providers: [DashboardService] })
+@Module({ controllers: [DashboardController], providers: [DashboardService], exports: [DashboardService] })
 export class DashboardModule {}
