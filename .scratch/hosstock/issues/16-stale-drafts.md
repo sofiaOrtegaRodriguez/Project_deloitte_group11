@@ -4,11 +4,11 @@
 
 **Blocked by:** 12 (Notifications inbox), 14 (Purchase Planning and Drafts)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Stale Draft detection as the last step of recalculation
-- [ ] Warning with an old vs current comparison
-- [ ] "Update to current data" refreshes the figures and justification
-- [ ] A Notification is sent when a Draft goes stale
-- [ ] Drafts are never deleted automatically
-- [ ] API tests for detection, Notification and update
+- [x] Stale Draft detection as the last step of recalculation
+- [x] Warning with an old vs current comparison
+- [x] "Update to current data" refreshes the figures and justification
+- [x] A Notification is sent when a Draft goes stale
+- [x] Drafts are never deleted automatically
+- [x] API tests for detection, Notification and update

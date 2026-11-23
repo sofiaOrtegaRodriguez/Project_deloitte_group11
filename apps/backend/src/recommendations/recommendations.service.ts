@@ -3,6 +3,8 @@ import type { Prisma } from '../generated/prisma/client';
 import { computeFromDatabase } from '../indicators/load-indicators';
 import { PrismaService } from '../prisma/prisma.service';
 import { createRecommendation, EMPTY_HISTORY, loadHistory } from './create-recommendation';
+import { diffFigures, type FigureChange } from './stale-drafts';
+import { updateToCurrent } from './update-to-current';
 import { estimatedCost, type RecommendationFigures, type RecommendationType } from './recommendation-logic';
 
 const INCLUDE = {
@@ -31,6 +33,11 @@ export interface RecommendationView {
   priorityScore: number | null;
   justification: string;
   figures: RecommendationFigures;
+  /** Stale Draft (ticket 16): the figures no longer match the current indicators. */
+  stale: boolean;
+  staleSince: string | null;
+  /** Old (stored) vs current figures that differ; empty when not stale. */
+  oldVsCurrent: FigureChange[];
   /** Null: created by the system (auto-Draft). */
   createdBy: PersonView | null;
   discardReason: string | null;
@@ -64,6 +71,12 @@ function toView(row: RecommendationRow): RecommendationView {
     priorityScore: row.priorityScore,
     justification: row.justification,
     figures: row.figures as unknown as RecommendationFigures,
+    stale: row.staleSince !== null,
+    staleSince: row.staleSince?.toISOString() ?? null,
+    oldVsCurrent:
+      row.staleSince && row.currentFigures
+        ? diffFigures(row.figures as unknown as RecommendationFigures, row.currentFigures as unknown as RecommendationFigures)
+        : [],
     createdBy: person(row.createdBy),
     discardReason: row.discardReason,
     createdAt: row.createdAt.toISOString(),
@@ -180,6 +193,12 @@ export class RecommendationsService {
     await this.prisma.recommendationEvent.create({
       data: { recommendationId: id, type: 'DISCARDED', userId, details: { reason: cleanReason } },
     });
+    return this.get(id);
+  }
+
+  /** Refreshes a Stale Draft with the current data (409 when it is not stale). */
+  async updateToCurrent(id: number, userId: number): Promise<RecommendationView> {
+    await updateToCurrent(this.prisma, id, userId);
     return this.get(id);
   }
 

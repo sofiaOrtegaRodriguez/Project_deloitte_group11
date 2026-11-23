@@ -95,6 +95,13 @@ export class RecommendationsController {
   }
 
   @Roles('DIRECTOR', 'PROCUREMENT_TEAM')
+  @Post('recommendations/:id/update-to-current')
+  @HttpCode(200)
+  updateToCurrent(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser): Promise<RecommendationView> {
+    return this.recommendations.updateToCurrent(id, user.id);
+  }
+
+  @Roles('DIRECTOR', 'PROCUREMENT_TEAM')
   @Post('recommendations/:id/discard')
   @HttpCode(200)
   discard(
