@@ -95,5 +95,5 @@ export class PlanningController {
   }
 }
 
-@Module({ controllers: [PlanningController], providers: [PlanningService] })
+@Module({ controllers: [PlanningController], providers: [PlanningService], exports: [PlanningService] })
 export class PlanningModule {}

@@ -37,7 +37,7 @@ function Dashboard() {
         )}
       </div>
       <FilterBar />
-      <ExportButtons excel />
+      <ExportButtons excel pdf />
       {isPending && <p className="text-muted-foreground">Loading…</p>}
       {error && (
         <p role="alert" className="text-destructive">

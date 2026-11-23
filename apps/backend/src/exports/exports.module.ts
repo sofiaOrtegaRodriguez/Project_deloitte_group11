@@ -1,10 +1,12 @@
-import { Controller, Get, Module, Query, Res } from '@nestjs/common';
+import { Controller, Get, Injectable, Module, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import ExcelJS from 'exceljs';
 import { DashboardService } from '../dashboard/dashboard.module';
 import { FilterQuery } from '../filters/filters';
 import { ItemsService } from '../items/items.module';
+import { PlanningModule, PlanningService } from '../planning/planning.module';
 import { RecommendationsModule } from '../recommendations/recommendations.module';
+import { buildReportDefinition, renderPdf } from './report';
 import { ViewDataService, type Cell, type ViewData, type ViewTable } from './view-data';
 
 /** A CSV field: quoted when it holds a comma, quote, CR or LF; quotes doubled. Numbers use "." and no grouping. */
@@ -70,9 +72,38 @@ export async function toWorkbook(data: ViewData): Promise<ExcelJS.Buffer> {
   return wb.xlsx.writeBuffer();
 }
 
+@Injectable()
+export class ReportService {
+  constructor(
+    private readonly views: ViewDataService,
+    private readonly items: ItemsService,
+    private readonly planning: PlanningService,
+  ) {}
+
+  /** The report's document definition for a slice: ranking restricted to the filtered Items. Throws 400 on bad filters. */
+  async definition(query: FilterQuery) {
+    const data = await this.views.assemble(query);
+    const sliceIds = new Set((await this.items.list(query)).items.map((i) => i.id));
+    const ranking = (await this.planning.ranking()).items.filter((r) => sliceIds.has(r.itemId));
+    return { data, definition: buildReportDefinition(data, ranking) };
+  }
+}
+
 @Controller('exports')
 export class ExportsController {
-  constructor(private readonly views: ViewDataService) {}
+  constructor(
+    private readonly views: ViewDataService,
+    private readonly report: ReportService,
+  ) {}
+
+  /** The PDF report of the slice (tables only). Same query parameters as the views; any logged-in user. */
+  @Get('report.pdf')
+  async reportPdf(@Query() query: FilterQuery, @Res() res: Response): Promise<void> {
+    const { data, definition } = await this.report.definition(query);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="hosstock-report-${data.referenceDate ?? 'empty'}.pdf"`);
+    res.send(await renderPdf(definition));
+  }
 
   /** The Inventory table of the slice. Same query parameters as /api/items. Requires login (global guard). */
   @Get('inventory.csv')
@@ -94,9 +125,9 @@ export class ExportsController {
 }
 
 @Module({
-  imports: [RecommendationsModule],
+  imports: [RecommendationsModule, PlanningModule],
   controllers: [ExportsController],
-  providers: [ViewDataService, ItemsService, DashboardService],
-  exports: [ViewDataService],
+  providers: [ViewDataService, ReportService, ItemsService, DashboardService],
+  exports: [ViewDataService, ReportService],
 })
 export class ExportsModule {}
