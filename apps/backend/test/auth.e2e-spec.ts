@@ -109,7 +109,7 @@ describe('Authentication', () => {
       ['PENDING', 'Your access request is pending approval'],
       ['REJECTED', 'Your access request was rejected'],
       ['REMOVED', 'Your account has been removed'],
-    ] as const)('explains a %s account only after a correct password', async (status, message) => {
+    ] as const)('explains a %s Account Status only after a correct password', async (status, message) => {
       await createTeamMember(status);
 
       const correct = await http().post('/api/auth/login').send({ email: 'team@hospital.test', password: TEAM_PASSWORD }).expect(403);

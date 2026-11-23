@@ -6,8 +6,9 @@ import { hashPassword } from '../auth/password';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * Creates the Director account from DIRECTOR_NAME / DIRECTOR_EMAIL / DIRECTOR_PASSWORD if there is no Director yet.
- * Idempotent: once the Director exists it is never modified here, so a password the Director changes later is kept.
+ * Creates the Director from DIRECTOR_NAME / DIRECTOR_EMAIL / DIRECTOR_PASSWORD if there is no Director yet.
+ * Runs on every start but does nothing once a Director exists, whatever its email: later changes to the
+ * DIRECTOR_* variables in .env are not applied to the existing Director.
  */
 export async function seedDirector(prisma: PrismaClient): Promise<'created' | 'exists'> {
   if (await prisma.user.findFirst({ where: { role: 'DIRECTOR' } })) return 'exists';
@@ -35,7 +36,7 @@ export class DirectorSeed implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     if ((await seedDirector(this.prisma)) === 'created') {
-      this.logger.log(`Director account created for ${normaliseEmail(requireEnv('DIRECTOR_EMAIL'))}`);
+      this.logger.log(`Director created for ${normaliseEmail(requireEnv('DIRECTOR_EMAIL'))}`);
     }
   }
 }

@@ -18,9 +18,13 @@ export const ROLE_LABELS: Record<Role, string> = {
   PROCUREMENT_TEAM: 'Procurement Team',
 };
 
-const ME_KEY = ['auth', 'me'] as const;
+export const ME_KEY = ['auth', 'me'] as const;
 
-/** The logged-in User, or `null` when there is no valid session. */
+/**
+ * The logged-in User, or `null` when there is no valid session (the app shell then goes to Login).
+ * Never cached for long: it is checked again whenever the window regains focus, so a removal
+ * is noticed straight away.
+ */
 export function useCurrentUser() {
   return useQuery({
     queryKey: ME_KEY,
@@ -28,11 +32,12 @@ export function useCurrentUser() {
       try {
         return (await api<{ user: CurrentUser }>('/auth/me')).user;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) return null;
+        if (error instanceof ApiError && error.isSessionLost) return null;
         throw error;
       }
     },
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 }
 

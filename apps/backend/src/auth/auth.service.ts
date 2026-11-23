@@ -20,7 +20,7 @@ export class AuthService {
    * is given only after a correct password.
    */
   async login(email: string, password: string): Promise<{ user: AuthUser; token: string }> {
-    const user = await this.findAccount(normaliseEmail(email));
+    const user = await this.findUserByEmail(normaliseEmail(email));
     const passwordOk = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !passwordOk) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
@@ -31,11 +31,11 @@ export class AuthService {
   }
 
   /**
-   * The account an email logs in to. A Rejected account frees its email for a new request,
-   * so a newer non-Rejected account with the same email takes priority.
+   * The User an email logs in as. A Rejected User frees its email for a new request,
+   * so the User with that email who is not Rejected takes priority (the database allows only one).
    */
-  private async findAccount(email: string): Promise<User | null> {
-    const accounts = await this.prisma.user.findMany({ where: { email }, orderBy: { createdAt: 'desc' } });
-    return accounts.find((a) => a.status !== 'REJECTED') ?? accounts[0] ?? null;
+  private async findUserByEmail(email: string): Promise<User | null> {
+    const users = await this.prisma.user.findMany({ where: { email }, orderBy: { createdAt: 'desc' } });
+    return users.find((u) => u.status !== 'REJECTED') ?? users[0] ?? null;
   }
 }

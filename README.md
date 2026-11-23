@@ -60,7 +60,7 @@ This downloads everything the frontend and backend need, and generates the datab
 
 1. In the project folder, make a copy of `.env.example` and name the copy `.env`.
 2. Open `.env` and replace `YOUR_PASSWORD` (it appears twice) with the PostgreSQL password from step 2.
-3. Change `JWT_SECRET` and `DIRECTOR_PASSWORD` to values only you know.
+3. Change `JWT_SECRET` and `DIRECTOR_PASSWORD` to values only you know. The backend refuses to start while either of them still has the example value.
 
 `.env` contains passwords, so it is never committed to Git. Every variable is explained in `.env.example`:
 
@@ -71,7 +71,7 @@ This downloads everything the frontend and backend need, and generates the datab
 | `DATASET_PATH` | Folder with `inventory_data.csv` and `vendor_data.csv` (default `2-Hospital_Dataset`) |
 | `BACKEND_PORT` | Port of the backend API (default 3001) |
 | `JWT_SECRET` | Secret used to sign login sessions |
-| `DIRECTOR_NAME`, `DIRECTOR_EMAIL`, `DIRECTOR_PASSWORD` | The Director account created on first run |
+| `DIRECTOR_NAME`, `DIRECTOR_EMAIL`, `DIRECTOR_PASSWORD` | The Director, created on first run |
 | `ALERT_REPEAT_HOURS` | Hours between Alert Reminders (default 12) |
 | `LIVE_MONITOR_REFRESH_SECONDS` | Refresh interval of the live monitor (default 30) |
 
@@ -119,9 +119,11 @@ npm run dev:frontend
 
 Open <http://localhost:3000> and log in with `DIRECTOR_EMAIL` and `DIRECTOR_PASSWORD` from your `.env`.
 
-The Director account is created automatically the first time the backend starts. After that it is never overwritten: changing `DIRECTOR_PASSWORD` in `.env` later does **not** change the password of the existing account.
+The Director is created automatically the first time the backend starts. After that it is never overwritten: changing the `DIRECTOR_…` values in `.env` later does **not** change the existing Director's name, email or password. The database allows only one Director.
 
-The browser only talks to the frontend (port 3000), which forwards every `/api/...` request to the backend. Your login is kept in a secure cookie for 8 hours.
+The browser only talks to the frontend (port 3000), which forwards every `/api/...` request to the backend. Your login is kept for 8 hours in an **httpOnly** cookie, which JavaScript in the page cannot read. The cookie is only marked **Secure** (sent over HTTPS only) when the backend runs with `NODE_ENV=production`. Locally, over plain `http://localhost`, it is not Secure, so don't expose this local setup on a network.
+
+Pages you open without being logged in send you to the Login page, and so does any page where your session stops being valid (for example, if the Director removes you). Hosstock checks this again every time you come back to its browser window.
 
 ### Troubleshooting
 
@@ -133,6 +135,7 @@ The browser only talks to the frontend (port 3000), which forwards every `/api/.
 | `Dataset file not found` | `DATASET_PATH` in `.env` doesn't point to the folder with the CSV files. |
 | `Environment variable JWT_SECRET is not set` (or `DIRECTOR_…`) | Add the missing variable to `.env` (see `.env.example`), then restart the backend. |
 | `DIRECTOR_PASSWORD must be at least 8 characters long` | Choose a longer Director password in `.env`. |
+| `JWT_SECRET still has the example value from .env.example` (or `DIRECTOR_PASSWORD`) | Replace the example value in `.env` with your own, then start the backend again. |
 | The app says "Hosstock can't reach the server" | The backend isn't running. Start it with `npm run dev:backend`. |
 
 ---

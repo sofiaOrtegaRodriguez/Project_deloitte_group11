@@ -12,6 +12,6 @@ export function verifyPassword(password: string, hash: string): Promise<boolean>
 
 /**
  * A valid hash of a random value. Comparing against it when the email is unknown makes a failed
- * login take as long as a wrong password, so response times don't reveal which accounts exist.
+ * login take as long as a wrong password, so response times don't reveal which Users exist.
  */
 export const DUMMY_HASH = bcrypt.hashSync('hosstock-no-such-user', COST);

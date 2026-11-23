@@ -32,6 +32,9 @@ module.exports = {
       moduleNameMapper,
       globalSetup: '<rootDir>/test/global-setup.ts',
       setupFiles: ['<rootDir>/test/setup-env.ts'],
+      // Login tests hash several passwords with bcrypt (cost 12, pure JS): close to 1 s each on a slow
+      // or power-saving machine, which can exceed Jest's default 5 s per test.
+      testTimeout: 30_000,
     },
   ],
 };

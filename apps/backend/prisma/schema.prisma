@@ -5,9 +5,11 @@
 // which lets application tables added later reference Items safely.
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  /// Partial unique indexes (`where:`) for the User rules.
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -78,11 +80,12 @@ enum AccountStatus {
   REMOVED
 }
 
-/// A person with an individual Hosstock account. Application table: never touched by the ETL.
+/// A person who can use Hosstock, as the Director or as a Procurement Team member.
+/// Application table: never touched by the ETL.
 model User {
   id           Int           @id @default(autoincrement())
   name         String
-  /// Stored lower-cased. Uniqueness among non-Rejected accounts is enforced when registration arrives.
+  /// Stored lower-cased. Unique among Users that are not Rejected: a Rejected User frees the email.
   email        String
   passwordHash String        @map("password_hash")
   role         Role
@@ -91,6 +94,10 @@ model User {
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
   @@index([email])
+  /// There is exactly one Director.
+  @@unique([role], map: "users_single_director", where: raw("role = 'DIRECTOR'"))
+  /// An email belongs to at most one User that is not Rejected.
+  @@unique([email], map: "users_email_not_rejected", where: raw("status <> 'REJECTED'"))
   @@map("users")
 }
 
