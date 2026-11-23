@@ -1,0 +1,3 @@
+# Only inventory and vendor data are in scope
+
+Hosstock is a logistics tool, so only `inventory_data.csv` (core) and `vendor_data.csv` are loaded. Vendor data is used for vendor names and as a reference Contracted Lead Time only, because it lists one item per vendor while inventory shows every vendor supplying every product. We exclude `financial_data.csv` because its categories and descriptions are inconsistent (for example "Supplies | Surgeons' salaries"). We exclude `patient_data.csv` and `staff_data.csv` because they are clinical and HR data, outside the product's purpose. Anomalous inventory rows (stock above Max Capacity, minimum above maximum) are loaded unchanged and flagged, never dropped or corrected.

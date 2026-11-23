@@ -1,0 +1,49 @@
+{
+  "name": "@hosstock/backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "prisma generate",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p test/tsconfig.json",
+    "db:setup": "tsx scripts/db-setup.ts",
+    "etl": "tsx src/etl/cli.ts",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --runInBand",
+    "test:unit": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --selectProjects unit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.2.11",
+    "@nestjs/core": "^11.2.11",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.2.11",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "bcryptjs": "^3.0.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "cookie-parser": "^1.4.7",
+    "csv-parse": "^7.0.3",
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@nestjs/schematics": "^11.1.0",
+    "@nestjs/testing": "^11.2.11",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.5.2",
+    "prisma": "^7.10.1",
+    "supertest": "^7.3.2",
+    "ts-jest": "^29.4.15",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3"
+  }
+}

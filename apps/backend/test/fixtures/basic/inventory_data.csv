@@ -1,0 +1,6 @@
+Date,Item_ID,Item_Type,Item_Name,Current_Stock,Min_Required,Max_Capacity,Unit_Cost,Avg_Usage_Per_Day,Restock_Lead_Time,Vendor_ID
+2025-01-01,101,Consumable,Surgical Mask,500,100,1000,0.50,50,5,V001
+2025-01-03,101,Equipment,Surgical Mask,1200,100,1000,0.75,40,6,V002
+2025-01-01,102,Equipment,Ventilator,20,30,25,20000.00,1,30,V002
+2025-01-05,102,Equipment,Ventilator,10,30,40,19999.99,2,28,V003
+2025-01-02,101,Equipment,Ventilator,8,5,20,15000.00,1,20,V003

@@ -1,0 +1,96 @@
+// Hosstock database schema. Vocabulary follows GLOSSARY.md.
+//
+// Source tables (Snapshot, Vendor) are fully replaced by every ETL run.
+// Item is upserted by its natural key so its internal id stays stable across runs (ADR 0001),
+// which lets application tables added later reference Items safely.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// An Item is the pair (Item_ID, Item_Name) from the inventory CSV (ADR 0001).
+model Item {
+  id           Int        @id @default(autoincrement())
+  /// `Item_ID` column of the source CSV.
+  sourceItemId Int        @map("source_item_id")
+  /// `Item_Name` column of the source CSV.
+  name         String
+  /// Category (`Item_Type`) taken from the Item's latest Snapshot.
+  category     String
+  /// Vendor (`Vendor_ID`) taken from the Item's latest Snapshot.
+  vendorCode   String     @map("vendor_code")
+  snapshots    Snapshot[]
+
+  @@unique([sourceItemId, name])
+  @@map("items")
+}
+
+/// One row of the inventory CSV: the state of an Item on a date. Loaded unchanged.
+model Snapshot {
+  id              Int      @id @default(autoincrement())
+  itemId          Int      @map("item_id")
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  date            DateTime @db.Date
+  category        String
+  vendorCode      String   @map("vendor_code")
+  currentStock    Int      @map("current_stock")
+  minRequired     Int      @map("min_required")
+  maxCapacity     Int      @map("max_capacity")
+  unitCost        Decimal  @map("unit_cost") @db.Decimal(14, 2)
+  avgUsagePerDay  Decimal  @map("avg_usage_per_day") @db.Decimal(14, 3)
+  restockLeadTime Int      @map("restock_lead_time")
+
+  /// Data Quality Flag: Current_Stock > Max_Capacity.
+  stockAboveMaxCapacity Boolean @map("stock_above_max_capacity")
+  /// Data Quality Flag: Min_Required > Max_Capacity.
+  minAboveMax           Boolean @map("min_above_max")
+
+  @@unique([itemId, date])
+  @@index([date])
+  @@map("snapshots")
+}
+
+enum Role {
+  DIRECTOR
+  PROCUREMENT_TEAM
+}
+
+/// Whether a User can log in. Only Active Users can use Hosstock.
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REMOVED
+}
+
+/// A person with an individual Hosstock account. Application table: never touched by the ETL.
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  /// Stored lower-cased. Uniqueness among non-Rejected accounts is enforced when registration arrives.
+  email        String
+  passwordHash String        @map("password_hash")
+  role         Role
+  status       AccountStatus
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@map("users")
+}
+
+/// Vendor reference data. Only the name and Contracted Lead Time are used (ADR 0002).
+model Vendor {
+  code                   String @id
+  name                   String
+  /// Contracted Lead Time in days (`Avg_Lead_Time (days)` in vendor_data.csv).
+  contractedLeadTimeDays Int    @map("contracted_lead_time_days")
+
+  @@map("vendors")
+}
