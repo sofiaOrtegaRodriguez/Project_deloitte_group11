@@ -4,10 +4,10 @@
 
 **Blocked by:** 07 (Dashboard charts)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Trends for every indicator over the filtered period, with the previous period overlaid
-- [ ] Comparisons by Category, Vendor and ABC Class
-- [ ] List of Items with rising and falling consumption trends
-- [ ] Category summary (Consumables vs Equipment)
-- [ ] API tests for the comparison endpoints with filters
+- [x] Trends for every indicator over the filtered period, with the previous period overlaid
+- [x] Comparisons by Category, Vendor and ABC Class
+- [x] List of Items with rising and falling consumption trends
+- [x] Category summary (Consumables vs Equipment)
+- [x] API tests for the comparison endpoints with filters

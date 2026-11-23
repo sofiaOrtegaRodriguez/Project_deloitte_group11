@@ -464,6 +464,47 @@ describe('stockStatusOf and urgencyLevelOf', () => {
   });
 });
 
+describe('daily indicator series', () => {
+  const current = { start: '2025-01-06', end: '2025-01-10' };
+
+  it('computes every per-day indicator from the carried-forward states', () => {
+    // 01-06: Syringe (60, min 20, max 200, cost 10, usage 10, RT 8), Ventilator (1000, 100, 800, 20, 50, 10),
+    //        Monitor (30, 40, 100, 5, 3, 2), Gauze (50, 10, 100, 2, 0, 5). The 02-01 Item has no state yet.
+    const point = compute(mainItems(), current).dailySeries[0];
+    expect(point.date).toBe('2025-01-06');
+    expect(point.stockValue).toBe(20850); // 600 + 20000 + 150 + 100
+    expect(point.excessStockValue).toBe(4000); // Ventilator: (1000 - 800) x 20
+    expect(point.belowMinimumCount).toBe(1); // Monitor 30 < 40
+    expect(point.medianAutonomyDays).toBeCloseTo(10, 10); // autonomies 6, 20, 10 (Gauze consumes nothing)
+    expect(point.stockTurnover).toBeCloseTo((1115 * 365) / 20850, 10); // consumption 100 + 1000 + 15 + 0
+    expect(point.replenishmentTimeDays).toBeCloseTo(6.25, 10); // (8 + 10 + 2 + 5) / 4
+  });
+
+  it('has one point per day and null/zero values when no Item has a state', () => {
+    const series = compute(mainItems(), current).dailySeries;
+    expect(series.map((p) => p.date)).toEqual(['2025-01-06', '2025-01-07', '2025-01-08', '2025-01-09', '2025-01-10']);
+    const empty = compute(mainItems(), { start: '2024-12-01', end: '2024-12-02' }).dailySeries[0];
+    expect(empty).toEqual({
+      date: '2024-12-01',
+      stockValue: 0,
+      excessStockValue: 0,
+      belowMinimumCount: 0,
+      medianAutonomyDays: null,
+      stockTurnover: null,
+      replenishmentTimeDays: null,
+    });
+  });
+
+  it('covers only the kept slice', () => {
+    const slice = computeIndicators(mainItems(), current, DEFAULT_INDICATOR_CONFIG, (r) => r.itemId === SNAP).dailySeries[0];
+    expect(slice.stockValue).toBe(600);
+    expect(slice.belowMinimumCount).toBe(0);
+    expect(slice.medianAutonomyDays).toBeCloseTo(6, 10);
+    expect(slice.stockTurnover).toBeCloseTo((100 * 365) / 600, 10);
+    expect(slice.replenishmentTimeDays).toBe(8);
+  });
+});
+
 describe('ABC Class', () => {
   const classes = (values: number[], config = DEFAULT_INDICATOR_CONFIG) => {
     const result = classifyAbc(

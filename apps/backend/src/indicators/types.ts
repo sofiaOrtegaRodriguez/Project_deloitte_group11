@@ -116,6 +116,21 @@ export interface ValuePoint {
   consumptionValue: number;
 }
 
+/** Per-day portfolio indicators, from the carried-forward Item State of the Items with a state that day. */
+export interface DailyIndicatorPoint {
+  date: string;
+  stockValue: number;
+  excessStockValue: number;
+  /** Items whose stock is below their minimum that day. */
+  belowMinimumCount: number;
+  /** Median of stock / usage over the Items that consume stock that day. Null when none. */
+  medianAutonomyDays: number | null;
+  /** Point-in-time turnover: 365 x sum(usage x cost) / sum(stock x cost) that day. Null when the Stock Value is 0. */
+  stockTurnover: number | null;
+  /** Mean Replenishment Time of the Items with a state that day. Null when none. */
+  replenishmentTimeDays: number | null;
+}
+
 export interface PortfolioIndicators {
   itemsWithState: number;
   /** Median Stock Autonomy of the Items that consume stock. Null when there are none. */
@@ -142,4 +157,6 @@ export interface IndicatorsResult {
   availabilitySeries: AvailabilityPoint[];
   /** Daily total Stock Value and consumption value, from the carried-forward Item State. */
   valueSeries: ValuePoint[];
+  /** Daily series of the remaining indicators (excess, below minimum, autonomy, turnover, Replenishment Time). */
+  dailySeries: DailyIndicatorPoint[];
 }
