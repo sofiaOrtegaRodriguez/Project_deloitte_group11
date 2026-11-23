@@ -4,9 +4,9 @@
 
 **Blocked by:** 15 (Submit, Approve and Reject), 22 (CSV and Excel exports)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] PDF generated server-side via pdfmake, tables only (no chart images)
-- [ ] Contains filters, Reference Date, KPIs, ranking and Recommendations
-- [ ] Accepts the same parameters as the view
-- [ ] API test: the PDF is generated with only the filtered data
+- [x] PDF generated server-side via pdfmake, tables only (no chart images)
+- [x] Contains filters, Reference Date, KPIs, ranking and Recommendations
+- [x] Accepts the same parameters as the view
+- [x] API test: the PDF is generated with only the filtered data
